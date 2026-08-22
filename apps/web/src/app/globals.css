@@ -1,0 +1,30 @@
+@import 'tailwindcss';
+@source "../../../../packages/ui/src";
+
+:root {
+  color-scheme: dark;
+  font-family: var(--font-sans), sans-serif;
+  background: #09090b;
+  color: #fafafa;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  background: #09090b;
+}
+
+body {
+  min-height: 100vh;
+  margin: 0;
+  background:
+    radial-gradient(circle at 20% 10%, rgb(39 39 42 / 35%), transparent 32rem),
+    #09090b;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}

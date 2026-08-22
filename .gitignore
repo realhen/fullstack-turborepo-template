@@ -1,0 +1,27 @@
+# Dependencies and package-manager state
+node_modules/
+.pnpm-store/
+
+# Build and test output
+.next/
+.turbo/
+cdk.out/
+coverage/
+dist/
+out/
+*.tsbuildinfo
+
+# Environment and local configuration
+.env
+.env.*
+!.env.example
+!apps/**/.env.example
+
+# Logs and editor files
+*.log
+.DS_Store
+.idea/
+.vscode/
+
+# CDK context lookups are local to an AWS account
+cdk.context.json
