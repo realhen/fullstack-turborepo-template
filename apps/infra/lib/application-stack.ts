@@ -141,6 +141,10 @@ export class ApplicationStack extends cdk.Stack {
       webService.loadBalancer,
       ec2.Port.tcp(3001),
     )
+    apiService.connections.allowFrom(
+      webService.service,
+      ec2.Port.tcp(3001),
+    )
 
     webService.listener.addTargets('ApiTargets', {
       conditions: [elbv2.ListenerCondition.pathPatterns(['/api/*'])],
