@@ -2,6 +2,10 @@ import { z } from 'zod'
 
 const envSchema = z.object({
   CORS_ORIGIN: z.string().url().optional(),
+  ENABLE_SWAGGER: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((value) => value === 'true'),
   NODE_ENV: z
     .enum(['development', 'test', 'production'])
     .default('development'),
