@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: apps/api/Dockerfile
     environment:
+      CORS_ORIGIN: http://localhost:3000
+      ENABLE_SWAGGER: 'true'
       NODE_ENV: production
       PORT: 3001
     healthcheck:
