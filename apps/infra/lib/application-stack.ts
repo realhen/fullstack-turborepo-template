@@ -137,7 +137,10 @@ export class ApplicationStack extends cdk.Stack {
       healthyHttpCodes: '200',
       path: '/health',
     })
-    apiService.connections.allowFrom(webService.loadBalancer, ec2.Port.tcp(3001))
+    apiService.connections.allowFrom(
+      webService.loadBalancer,
+      ec2.Port.tcp(3001),
+    )
     apiService.connections.allowFrom(webService.service, ec2.Port.tcp(3001))
 
     webService.listener.addTargets('ApiTargets', {
