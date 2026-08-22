@@ -20,23 +20,43 @@ The frontend and backend remain independent applications. There is intentionally
 1. Click **Use this template** on GitHub and clone the generated repository.
 2. Install Node.js 24 and enable Corepack.
 3. Bootstrap the project name and local environment files.
-4. Install and start everything.
+4. Install dependencies.
 
 ```bash
 corepack enable
 pnpm bootstrap --name my-app
 pnpm install
+```
+
+`pnpm bootstrap` changes the root project name, updates the CDK context, and creates app `.env` files without overwriting existing ones. Workspace package names stay under the neutral `@repo/*` namespace, so a new project does not require a broad rename.
+
+## Local development
+
+No AWS account, CDK bootstrap, or cloud deployment is required to develop or test this template.
+
+### Native development with hot reload
+
+```bash
 pnpm dev
 ```
 
-Open:
+This starts Next.js and NestJS concurrently. Changes in either application reload locally.
+
+### Containerized, production-like development
+
+```bash
+pnpm dev:containers
+# equivalent: docker compose up --build
+```
+
+Docker Compose builds the same Dockerfiles used by CDK, starts both services, and wires the web container to the API container. This is useful in cloud development environments and for testing the production container layout without deploying AWS infrastructure.
+
+Open either local workflow at:
 
 - Web: [http://localhost:3000](http://localhost:3000)
 - API: [http://localhost:3001/api/v1](http://localhost:3001/api/v1)
-- Swagger: [http://localhost:3001/api/docs](http://localhost:3001/api/docs)
+- Swagger (local only): [http://localhost:3001/api/docs](http://localhost:3001/api/docs)
 - API health: [http://localhost:3001/api/v1/health](http://localhost:3001/api/v1/health)
-
-`pnpm bootstrap` changes the root project name, updates the CDK context, and creates app `.env` files without overwriting existing ones. Workspace package names stay under the neutral `@repo/*` namespace, so a new project does not require a broad rename.
 
 ## Everyday commands
 
@@ -47,7 +67,7 @@ pnpm dev:api          # Run only NestJS
 pnpm check            # Lint, typecheck, test, and build everything
 pnpm check:affected   # Run checks only for changed packages and dependents
 pnpm format           # Format the repository
-docker compose up --build
+pnpm dev:containers   # Run the full stack with Docker Compose
 ```
 
 Turbo caches deterministic tasks and runs the workspace graph in parallel. CI runs the complete quality gate on pushes to `main` and pull requests. Dependabot keeps npm and GitHub Actions dependencies current.
@@ -58,7 +78,7 @@ Never commit `.env` files. Document each new variable in the nearest `.env.examp
 
 The web app uses `API_URL` only on the server. Use `NEXT_PUBLIC_API_URL` only when browser code truly needs a public API address; values with the `NEXT_PUBLIC_` prefix are embedded into the client bundle.
 
-The API validates configuration at startup. Add application-specific fields to `apps/api/src/env.ts` so an invalid deployment fails immediately instead of failing on its first request.
+The API validates configuration at startup. Add application-specific fields to `apps/api/src/env.ts` so an invalid deployment fails immediately instead of failing on its first request. Swagger is enabled by `ENABLE_SWAGGER=true`; the local environment files and Docker Compose set it, while CDK production deployments leave it disabled.
 
 ## Deployment
 
