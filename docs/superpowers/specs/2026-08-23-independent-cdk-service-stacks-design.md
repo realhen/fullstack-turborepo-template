@@ -103,6 +103,7 @@ apps/infra/
 ├── lib/
 │   ├── constructs/
 │   │   ├── container-image.ts
+│   │   ├── database-bindings.ts
 │   │   └── fargate-service.ts
 │   ├── foundation/
 │   │   ├── access-control.ts

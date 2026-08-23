@@ -436,9 +436,9 @@ State clearly that the frontend deploys on Vercel and the backend ALB serves onl
 
 - [ ] **Step 3: Run documentation and CI-config checks**
 
-Run: `pnpm exec prettier --check README.md apps/infra/.env.example .github/workflows/ci.yml docs/superpowers/specs/2026-08-23-independent-cdk-service-stacks-design.md`
+Run: `pnpm exec prettier --check README.md .github/workflows/ci.yml docs/superpowers/specs/2026-08-23-independent-cdk-service-stacks-design.md`
 
-Expected: all files use repository formatting.
+Expected: all supported files use repository formatting; inspect the dotenv example directly because Prettier has no dotenv parser.
 
 Inspect: `rg -n "certificateArn|hostedZoneId|hostedZoneName|AWS-hosted web|CodePipeline" README.md apps/infra .github/workflows/ci.yml`
 
