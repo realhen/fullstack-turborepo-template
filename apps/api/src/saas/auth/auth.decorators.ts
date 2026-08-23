@@ -14,16 +14,18 @@ export type AuthorizationRequirement = {
 }
 
 export const RequireScopes = (...scopes: string[]) =>
-  SetMetadata(AUTHORIZATION_REQUIREMENT, { scopes } satisfies AuthorizationRequirement)
+  SetMetadata(AUTHORIZATION_REQUIREMENT, {
+    scopes,
+  } satisfies AuthorizationRequirement)
 
 export const RequireProjectScopes = (
   scopes: string[],
   projectParam = 'projectId',
 ) =>
-  SetMetadata(
-    AUTHORIZATION_REQUIREMENT,
-    { projectParam, scopes } satisfies AuthorizationRequirement,
-  )
+  SetMetadata(AUTHORIZATION_REQUIREMENT, {
+    projectParam,
+    scopes,
+  } satisfies AuthorizationRequirement)
 
 export const CurrentPrincipal = createParamDecorator(
   (_: unknown, context: ExecutionContext): Principal | undefined =>

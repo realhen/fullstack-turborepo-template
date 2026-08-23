@@ -1,14 +1,14 @@
-import type {
-  ProjectMembership,
-  ProjectMembershipStore,
-} from './project.types'
+import type { ProjectMembership, ProjectMembershipStore } from './project.types'
 
 export class InMemoryProjectMembershipStore implements ProjectMembershipStore {
   private readonly memberships = new Map<string, ProjectMembership>()
 
   constructor(initialMemberships: ProjectMembership[] = []) {
     for (const membership of initialMemberships) {
-      this.memberships.set(this.key(membership.project.id, membership.userId), membership)
+      this.memberships.set(
+        this.key(membership.project.id, membership.userId),
+        membership,
+      )
     }
   }
 
@@ -30,7 +30,10 @@ export class InMemoryProjectMembershipStore implements ProjectMembershipStore {
   }
 
   upsertMembership(membership: ProjectMembership): Promise<ProjectMembership> {
-    this.memberships.set(this.key(membership.project.id, membership.userId), membership)
+    this.memberships.set(
+      this.key(membership.project.id, membership.userId),
+      membership,
+    )
     return Promise.resolve(membership)
   }
 

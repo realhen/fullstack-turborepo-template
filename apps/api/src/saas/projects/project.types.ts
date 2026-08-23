@@ -14,7 +14,10 @@ export type ProjectMembership = {
 
 /** Replace this port with a database-backed implementation in production. */
 export interface ProjectMembershipStore {
-  getMembership(projectId: string, userId: string): Promise<ProjectMembership | null>
+  getMembership(
+    projectId: string,
+    userId: string,
+  ): Promise<ProjectMembership | null>
   listMemberships(projectId: string): Promise<ProjectMembership[]>
   upsertMembership(membership: ProjectMembership): Promise<ProjectMembership>
 }

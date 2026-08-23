@@ -21,7 +21,10 @@ type TaskDefinitionResource = {
 type ServiceResource = { Properties: { DesiredCount: number } }
 type ScalableTargetResource = { Properties: { MinCapacity: number } }
 
-function createStack(hostedZoneId?: string, hostedZoneName?: string): {
+function createStack(
+  hostedZoneId?: string,
+  hostedZoneName?: string,
+): {
   app: cdk.App
   stack: ApplicationStack
 } {
@@ -52,7 +55,8 @@ describe('ApplicationStack', () => {
     expect(
       Object.values(taskDefinitions).every(
         (taskDefinition) =>
-          taskDefinition.Properties.RuntimePlatform.CpuArchitecture === 'X86_64' &&
+          taskDefinition.Properties.RuntimePlatform.CpuArchitecture ===
+            'X86_64' &&
           taskDefinition.Properties.RuntimePlatform.OperatingSystemFamily ===
             'LINUX',
       ),

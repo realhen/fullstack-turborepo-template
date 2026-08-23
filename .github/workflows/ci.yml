@@ -37,17 +37,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check formatting
-        run: |
-          pnpm format
-          git diff --binary > prettier.patch
-          git diff --exit-code
-
-      - name: Upload formatting patch
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: prettier-patch
-          path: prettier.patch
+        run: pnpm format:check
 
       - name: Lint, typecheck, test, and build
         run: pnpm check

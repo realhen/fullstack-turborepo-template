@@ -24,16 +24,19 @@ export class ScopeGuard implements CanActivate {
   ) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
-    const requirement = this.reflector.getAllAndOverride<AuthorizationRequirement>(
-      AUTHORIZATION_REQUIREMENT,
-      [context.getHandler(), context.getClass()],
-    )
+    const requirement =
+      this.reflector.getAllAndOverride<AuthorizationRequirement>(
+        AUTHORIZATION_REQUIREMENT,
+        [context.getHandler(), context.getClass()],
+      )
     if (!requirement) return true
 
     const request = context.switchToHttp().getRequest<RequestWithPrincipal>()
     let principal
     try {
-      principal = await this.authentication.authenticate(request.headers.authorization)
+      principal = await this.authentication.authenticate(
+        request.headers.authorization,
+      )
     } catch {
       throw new UnauthorizedException('Valid bearer authentication is required')
     }
@@ -41,13 +44,21 @@ export class ScopeGuard implements CanActivate {
 
     if (requirement.projectParam) {
       const projectId = request.params[requirement.projectParam]
-      if (!projectId) throw new ForbiddenException('Project context is required')
+      if (!projectId)
+        throw new ForbiddenException('Project context is required')
       assertProjectId(projectId)
-      const membership = await this.projects.getMembership(projectId, principal.id)
-      if (!membership) throw new ForbiddenException('Project membership is required')
+      const membership = await this.projects.getMembership(
+        projectId,
+        principal.id,
+      )
+      if (!membership)
+        throw new ForbiddenException('Project membership is required')
       request.project = membership
-      if (this.projects.hasRoleScopes(membership.role, requirement.scopes)) return true
-      throw new ForbiddenException('Required project role permission is missing')
+      if (this.projects.hasRoleScopes(membership.role, requirement.scopes))
+        return true
+      throw new ForbiddenException(
+        'Required project role permission is missing',
+      )
     }
 
     if (requirement.scopes.every((scope) => principal.scopes.includes(scope))) {

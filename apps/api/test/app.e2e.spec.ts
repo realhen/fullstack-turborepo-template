@@ -11,7 +11,8 @@ describe('API', () => {
     process.env.NODE_ENV = 'test'
     process.env.ENABLE_SWAGGER = 'true'
     process.env.AUTH_MODE = 'local'
-    process.env.AUTH_LOCAL_TOKEN = 'test-token-that-is-long-enough-for-validation'
+    process.env.AUTH_LOCAL_TOKEN =
+      'test-token-that-is-long-enough-for-validation'
     process.env.AUTH_LOCAL_SUBJECT = 'test-user'
     process.env.AUTH_LOCAL_SCOPES = 'profile:read'
     process.env.AUTH_LOCAL_PROJECT_ID = 'test-project'
@@ -52,17 +53,15 @@ describe('API', () => {
       Array.from({ length: 101 }, () => request(server).get('/api/v1/')),
     )
     const healthResponses = await Promise.all(
-      Array.from({ length: 101 }, () =>
-        request(server).get('/api/v1/health'),
-      ),
+      Array.from({ length: 101 }, () => request(server).get('/api/v1/health')),
     )
 
     expect(
       apiResponses.filter((response) => response.status === 429),
     ).toHaveLength(1)
-    expect(
-      healthResponses.every((response) => response.status === 200),
-    ).toBe(true)
+    expect(healthResponses.every((response) => response.status === 200)).toBe(
+      true,
+    )
   })
 
   it('requires authentication for the current-user endpoint', async () => {

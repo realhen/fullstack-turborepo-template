@@ -75,7 +75,8 @@ function principalFromJwt(payload: JWTPayload, provider: string): Principal {
     for (const scope of payload.scope.split(/\s+/)) if (scope) scopes.add(scope)
   }
   if (Array.isArray(payload.scp)) {
-    for (const scope of payload.scp) if (typeof scope === 'string') scopes.add(scope)
+    for (const scope of payload.scp)
+      if (typeof scope === 'string') scopes.add(scope)
   }
   if (typeof payload.scp === 'string') {
     for (const scope of payload.scp.split(/\s+/)) if (scope) scopes.add(scope)

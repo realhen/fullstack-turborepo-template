@@ -27,7 +27,8 @@ const envSchema = z
     if (value.NODE_ENV === 'production' && value.AUTH_MODE === 'local') {
       context.addIssue({
         code: 'custom',
-        message: 'AUTH_MODE=local is forbidden in production. Use AUTH_MODE=oidc.',
+        message:
+          'AUTH_MODE=local is forbidden in production. Use AUTH_MODE=oidc.',
         path: ['AUTH_MODE'],
       })
     }
@@ -45,10 +46,7 @@ const envSchema = z
     }
 
     if (value.AUTH_MODE === 'oidc') {
-      for (const key of [
-        'AUTH_ISSUER',
-        'AUTH_JWKS_URI',
-      ] as const) {
+      for (const key of ['AUTH_ISSUER', 'AUTH_JWKS_URI'] as const) {
         if (!value[key]) {
           context.addIssue({
             code: 'custom',

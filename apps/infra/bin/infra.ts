@@ -7,10 +7,10 @@ const projectName = app.node.tryGetContext('projectName') as string | undefined
 const certificateArn = app.node.tryGetContext('certificateArn') as
   string | undefined
 const domainName = app.node.tryGetContext('domainName') as string | undefined
-const hostedZoneId = app.node.tryGetContext('hostedZoneId') as string | undefined
+const hostedZoneId = app.node.tryGetContext('hostedZoneId') as
+  string | undefined
 const hostedZoneName = app.node.tryGetContext('hostedZoneName') as
-  | string
-  | undefined
+  string | undefined
 
 if (!certificateArn) {
   throw new Error(

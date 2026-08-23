@@ -10,4 +10,3 @@ export default defineConfig({
     include: ['src/**/*.spec.ts', 'test/**/*.spec.ts'],
   },
 })
-
