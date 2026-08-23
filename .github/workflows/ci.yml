@@ -42,7 +42,6 @@ jobs:
       - name: Lint, typecheck, test, and build
         run: pnpm check
 
-
   containers:
     needs: quality
     runs-on: ubuntu-latest
