@@ -27,9 +27,7 @@ class MemoryOutboxStore implements BillingOutboxStore {
     return Promise.resolve(true)
   }
 
-  releaseClaim(input: {
-    claimed: ClaimedBillingOutboxMessage
-  }): Promise<void> {
+  releaseClaim(input: { claimed: ClaimedBillingOutboxMessage }): Promise<void> {
     this.released.push(input.claimed)
     return Promise.resolve()
   }
