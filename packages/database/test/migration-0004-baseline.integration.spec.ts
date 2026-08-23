@@ -27,7 +27,6 @@ describeDatabase('migration 0004 pre-release baseline', () => {
     const organizationWithEntitlements = randomUUID()
     const organizationWithoutEntitlements = randomUUID()
     const entitlementVersion = new Date('2026-08-01T00:00:00.000Z')
-    const beforeMigration = new Date()
     const client = await pool.connect()
 
     try {
@@ -90,8 +89,8 @@ describeDatabase('migration 0004 pre-release baseline', () => {
             (version) =>
               version.billing_account_id === accountWithoutEntitlements,
           )
-          ?.provider_updated_at.getTime(),
-      ).toBeGreaterThanOrEqual(beforeMigration.getTime())
+          ?.provider_updated_at.toISOString(),
+      ).toBe('1970-01-01T00:00:00.000Z')
 
       const reconciliations = await client.query<{
         customer_id: string

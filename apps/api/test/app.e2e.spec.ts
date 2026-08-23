@@ -15,6 +15,7 @@ describe('API', () => {
     process.env.AUTH_LOCAL_SCOPES = 'profile:read'
     process.env.AUTH_LOCAL_PROJECT_ID = '00000000-0000-4000-8000-000000000012'
     process.env.AUTH_LOCAL_PROJECT_NAME = 'Test project'
+    process.env.WORKER_SECRET = 'test-worker-secret-that-is-long-enough'
     const { createApp } = await import('../src/bootstrap.js')
     app = await createApp()
     await app.init()
@@ -98,6 +99,15 @@ describe('API', () => {
       provider: 'local',
       scopes: ['profile:read'],
     })
+  })
+
+  it('rejects malformed authenticated internal billing jobs', async () => {
+    const server = app.getHttpServer()
+    await request(server)
+      .post('/api/v1/internal/billing/jobs')
+      .set('X-Worker-Secret', process.env.WORKER_SECRET!)
+      .send({ kind: 'billing.webhook' })
+      .expect(400)
   })
 
   it('authorizes project operations through membership roles', async () => {

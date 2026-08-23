@@ -122,6 +122,13 @@ export interface BillingRepository {
   getSummaryForOrganization(organizationId: string): Promise<BillingSummary>
   upsertSubscription(input: SubscriptionProjection): Promise<void>
   upsertInvoice(input: InvoiceProjection): Promise<void>
+  /** Reserves a monotonic database ordering token before an authoritative read. */
+  beginEntitlementSnapshot(billingAccountId: string): Promise<number>
+  replaceEntitlementsFromSnapshot(
+    billingAccountId: string,
+    entitlements: EntitlementProjection[],
+    snapshotToken: number,
+  ): Promise<void>
   replaceEntitlements(
     billingAccountId: string,
     entitlements: EntitlementProjection[],

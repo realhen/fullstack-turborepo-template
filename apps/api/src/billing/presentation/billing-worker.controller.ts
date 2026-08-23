@@ -1,6 +1,7 @@
 import { timingSafeEqual } from 'node:crypto'
 import {
   Body,
+  BadRequestException,
   Controller,
   ForbiddenException,
   Headers,
@@ -25,9 +26,10 @@ export class BillingWorkerController {
   @ApiExcludeEndpoint()
   async process(
     @Headers('x-worker-secret') secret: string | undefined,
-    @Body() message: BillingOutboxMessage,
+    @Body() body: unknown,
   ): Promise<void> {
     this.assertWorkerSecret(secret)
+    const message = parseWorkerMessage(body)
     if (message.kind === 'billing.webhook') {
       await this.processor.process(message.eventId)
       return
@@ -36,7 +38,6 @@ export class BillingWorkerController {
       await this.processor.reconcile(message.customerId)
       return
     }
-    throw new ForbiddenException('Unsupported billing worker message')
   }
 
   private assertWorkerSecret(secret: string | undefined): void {
@@ -52,4 +53,26 @@ export class BillingWorkerController {
       throw new ForbiddenException('Worker authentication is invalid')
     }
   }
+}
+
+function parseWorkerMessage(value: unknown): BillingOutboxMessage {
+  if (!value || typeof value !== 'object') {
+    throw new BadRequestException('Billing worker message is invalid')
+  }
+  const message = value as Record<string, unknown>
+  if (
+    message.kind === 'billing.webhook' &&
+    typeof message.eventId === 'string' &&
+    message.eventId.trim()
+  ) {
+    return { eventId: message.eventId, kind: 'billing.webhook' }
+  }
+  if (
+    message.kind === 'billing.reconcile' &&
+    typeof message.customerId === 'string' &&
+    message.customerId.trim()
+  ) {
+    return { customerId: message.customerId, kind: 'billing.reconcile' }
+  }
+  throw new BadRequestException('Billing worker message is invalid')
 }

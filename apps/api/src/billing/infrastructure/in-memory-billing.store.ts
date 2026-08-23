@@ -21,6 +21,7 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
   readonly invoices = new Map<string, InvoiceProjection>()
   readonly entitlements = new Map<string, EntitlementProjection[]>()
   readonly entitlementProjectionVersions = new Map<string, Date>()
+  readonly entitlementSnapshotTokens = new Map<string, number>()
   readonly events = new Map<string, VerifiedBillingEvent>()
   readonly processedEvents = new Set<string>()
   readonly failedEvents = new Map<string, string>()
@@ -84,6 +85,33 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
     return Promise.resolve()
   }
 
+  beginEntitlementSnapshot(billingAccountId: string): Promise<number> {
+    const token =
+      (this.entitlementSnapshotTokens.get(billingAccountId) ?? 0) + 1
+    this.entitlementSnapshotTokens.set(billingAccountId, token)
+    return Promise.resolve(token)
+  }
+
+  replaceEntitlementsFromSnapshot(
+    billingAccountId: string,
+    entitlements: EntitlementProjection[],
+    snapshotToken: number,
+  ): Promise<void> {
+    if (
+      this.entitlementSnapshotTokens.get(billingAccountId) !== snapshotToken
+    ) {
+      return Promise.resolve()
+    }
+    const nonSubscriptionEntitlements = (
+      this.entitlements.get(billingAccountId) ?? []
+    ).filter((entitlement) => entitlement.source !== 'subscription')
+    this.entitlements.set(billingAccountId, [
+      ...nonSubscriptionEntitlements,
+      ...entitlements,
+    ])
+    return Promise.resolve()
+  }
+
   replaceEntitlements(
     billingAccountId: string,
     entitlements: EntitlementProjection[],
@@ -98,6 +126,10 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
     }
     this.entitlements.set(billingAccountId, entitlements)
     this.entitlementProjectionVersions.set(billingAccountId, providerUpdatedAt)
+    this.entitlementSnapshotTokens.set(
+      billingAccountId,
+      (this.entitlementSnapshotTokens.get(billingAccountId) ?? 0) + 1,
+    )
     return Promise.resolve()
   }
 

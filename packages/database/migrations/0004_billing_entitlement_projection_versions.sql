@@ -3,6 +3,7 @@
 CREATE TABLE billing_entitlement_projection_versions (
   billing_account_id text PRIMARY KEY REFERENCES billing_accounts(id) ON DELETE CASCADE,
   provider_updated_at timestamptz NOT NULL,
+  ordering_token bigint NOT NULL DEFAULT 0,
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
@@ -20,13 +21,13 @@ SET provider_updated_at = GREATEST(
 );
 
 -- This repository has no deployed database yet, so 0004 is part of the
--- baseline. Accounts without entitlement rows need a conservative watermark
--- as well; otherwise an old webhook could create a projection after launch.
+-- baseline. Snapshots use ordering_token, so provider events retain their
+-- native timestamp domain and must not be blocked by a deployment-time clock.
 INSERT INTO billing_entitlement_projection_versions (
   billing_account_id,
   provider_updated_at
 )
-SELECT accounts.id, now()
+SELECT accounts.id, 'epoch'::timestamptz
 FROM billing_accounts AS accounts
 WHERE NOT EXISTS (
   SELECT 1

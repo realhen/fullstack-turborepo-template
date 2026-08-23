@@ -152,6 +152,57 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
     )
   }
 
+  async beginEntitlementSnapshot(billingAccountId: string): Promise<number> {
+    return this.withTransaction(async (client) => {
+      await client.query(
+        'SELECT id FROM billing_accounts WHERE id = $1 FOR UPDATE',
+        [billingAccountId],
+      )
+      await client.query(
+        `INSERT INTO billing_entitlement_projection_versions
+          (billing_account_id, provider_updated_at)
+         VALUES ($1, 'epoch'::timestamptz)
+         ON CONFLICT (billing_account_id) DO NOTHING`,
+        [billingAccountId],
+      )
+      const result = await client.query<{ ordering_token: string }>(
+        `UPDATE billing_entitlement_projection_versions
+         SET ordering_token = ordering_token + 1, updated_at = now()
+         WHERE billing_account_id = $1
+         RETURNING ordering_token::text`,
+        [billingAccountId],
+      )
+      const token = result.rows[0]?.ordering_token
+      if (!token) throw new Error('Entitlement snapshot token was not reserved')
+      return Number(token)
+    })
+  }
+
+  async replaceEntitlementsFromSnapshot(
+    billingAccountId: string,
+    entitlements: EntitlementProjection[],
+    snapshotToken: number,
+  ): Promise<void> {
+    await this.withTransaction(async (client) => {
+      await client.query(
+        'SELECT id FROM billing_accounts WHERE id = $1 FOR UPDATE',
+        [billingAccountId],
+      )
+      const version = await client.query<{ ordering_token: string }>(
+        `SELECT ordering_token::text
+         FROM billing_entitlement_projection_versions
+         WHERE billing_account_id = $1`,
+        [billingAccountId],
+      )
+      if (Number(version.rows[0]?.ordering_token) !== snapshotToken) return
+      await replaceSubscriptionEntitlementRows(
+        client,
+        billingAccountId,
+        entitlements,
+      )
+    })
+  }
+
   async replaceEntitlements(
     billingAccountId: string,
     entitlements: EntitlementProjection[],
@@ -160,6 +211,13 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
     await this.withTransaction(async (client) => {
       await client.query(
         'SELECT id FROM billing_accounts WHERE id = $1 FOR UPDATE',
+        [billingAccountId],
+      )
+      await client.query(
+        `INSERT INTO billing_entitlement_projection_versions
+          (billing_account_id, provider_updated_at)
+         VALUES ($1, 'epoch'::timestamptz)
+         ON CONFLICT (billing_account_id) DO NOTHING`,
         [billingAccountId],
       )
       const version = await client.query<{ provider_updated_at: Date }>(
@@ -173,30 +231,14 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
       // total order, so accepting an equal replacement could restore access.
       if (currentVersion && new Date(currentVersion) >= providerUpdatedAt)
         return
-      await client.query(
-        'DELETE FROM billing_entitlements WHERE billing_account_id = $1',
-        [billingAccountId],
-      )
-      for (const entitlement of entitlements) {
-        await client.query(
-          `INSERT INTO billing_entitlements
-            (billing_account_id, feature_key, active, source, provider_updated_at)
-           VALUES ($1, $2, $3, $4, $5)`,
-          [
-            billingAccountId,
-            entitlement.featureKey,
-            entitlement.active,
-            entitlement.source,
-            entitlement.providerUpdatedAt,
-          ],
-        )
-      }
+      await replaceEntitlementRows(client, billingAccountId, entitlements)
       await client.query(
         `INSERT INTO billing_entitlement_projection_versions
           (billing_account_id, provider_updated_at, updated_at)
          VALUES ($1, $2, now())
          ON CONFLICT (billing_account_id) DO UPDATE
          SET provider_updated_at = EXCLUDED.provider_updated_at,
+             ordering_token = billing_entitlement_projection_versions.ordering_token + 1,
              updated_at = now()`,
         [billingAccountId, providerUpdatedAt],
       )
@@ -383,6 +425,57 @@ type EntitlementRow = {
   feature_key: string
   provider_updated_at: Date
   source: EntitlementProjection['source']
+}
+
+async function replaceEntitlementRows(
+  client: QueryClient,
+  billingAccountId: string,
+  entitlements: EntitlementProjection[],
+): Promise<void> {
+  await client.query(
+    'DELETE FROM billing_entitlements WHERE billing_account_id = $1',
+    [billingAccountId],
+  )
+  for (const entitlement of entitlements) {
+    await client.query(
+      `INSERT INTO billing_entitlements
+        (billing_account_id, feature_key, active, source, provider_updated_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        billingAccountId,
+        entitlement.featureKey,
+        entitlement.active,
+        entitlement.source,
+        entitlement.providerUpdatedAt,
+      ],
+    )
+  }
+}
+
+async function replaceSubscriptionEntitlementRows(
+  client: QueryClient,
+  billingAccountId: string,
+  entitlements: EntitlementProjection[],
+): Promise<void> {
+  await client.query(
+    `DELETE FROM billing_entitlements
+     WHERE billing_account_id = $1 AND source = 'subscription'`,
+    [billingAccountId],
+  )
+  for (const entitlement of entitlements) {
+    await client.query(
+      `INSERT INTO billing_entitlements
+        (billing_account_id, feature_key, active, source, provider_updated_at)
+       VALUES ($1, $2, $3, $4, $5)`,
+      [
+        billingAccountId,
+        entitlement.featureKey,
+        entitlement.active,
+        entitlement.source,
+        entitlement.providerUpdatedAt,
+      ],
+    )
+  }
 }
 
 function toAccount(row: AccountRow): BillingAccount {

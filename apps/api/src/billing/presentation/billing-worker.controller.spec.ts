@@ -1,4 +1,4 @@
-import { ForbiddenException } from '@nestjs/common'
+import { BadRequestException, ForbiddenException } from '@nestjs/common'
 import { describe, expect, it, vi } from 'vitest'
 import { BillingWorkerController } from './billing-worker.controller'
 
@@ -39,5 +39,23 @@ describe('BillingWorkerController', () => {
     })
 
     expect(processor.process).toHaveBeenCalledWith('evt_1')
+  })
+
+  it('rejects malformed authenticated worker messages at the HTTP boundary', async () => {
+    const { controller, processor } = setup()
+
+    await expect(
+      controller.process('shared-worker-secret', {
+        kind: 'billing.webhook',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException)
+    await expect(
+      controller.process('shared-worker-secret', {
+        customerId: '',
+        kind: 'billing.reconcile',
+      }),
+    ).rejects.toBeInstanceOf(BadRequestException)
+    expect(processor.process).not.toHaveBeenCalled()
+    expect(processor.reconcile).not.toHaveBeenCalled()
   })
 })

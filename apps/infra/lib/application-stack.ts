@@ -601,7 +601,8 @@ export class ApplicationStack extends cdk.Stack {
       value: database.secret!.secretArn,
     })
     new cdk.CfnOutput(this, 'MigrationTaskDefinitionArn', {
-      description: 'Run this one-off ECS task before an application rollout.',
+      description:
+        'Standalone migration task for diagnostics or manual recovery; API tasks run the normal init gate.',
       value: migrationTask.taskDefinitionArn,
     })
     new cdk.CfnOutput(this, 'MigrationClusterName', {

@@ -264,9 +264,7 @@ describe('BillingService', () => {
     await processor.reconcile(account.providerCustomerId)
 
     expect(store.entitlements.get(account.id)).toEqual([])
-    expect(
-      store.entitlementProjectionVersions.get(account.id)?.getTime(),
-    ).toBeGreaterThan(baselineVersion.getTime())
+    expect(store.entitlementSnapshotTokens.get(account.id)).toBeGreaterThan(0)
   })
 
   it('reconciliation combines entitlement keys from every current subscription', async () => {
@@ -289,6 +287,78 @@ describe('BillingService', () => {
     expect(
       store.entitlements
         .get(account.id)
+        ?.map((entitlement) => entitlement.featureKey)
+        .sort(),
+    ).toEqual(['exports', 'projects'])
+  })
+
+  it('deduplicates subscription grants with active or trialing access winning', async () => {
+    const { processor, provider, service, store } = setup()
+    for (const planCode of ['starter-monthly', 'pro-monthly']) {
+      await service.createCheckout({
+        cancelUrl: 'http://localhost:3000/cancel',
+        organizationId,
+        planCode,
+        principal,
+        successUrl: 'http://localhost:3000/success',
+      })
+    }
+    const subscriptions = [...provider.subscriptions.values()]
+    expect(subscriptions).toHaveLength(2)
+    const [canceled, trialing] = subscriptions
+    if (!canceled || !trialing) throw new Error('Expected subscriptions')
+    provider.subscriptions.set(canceled.id, {
+      ...canceled,
+      metadata: { entitlement_keys: 'shared-grant' },
+      status: 'canceled',
+    })
+    provider.subscriptions.set(trialing.id, {
+      ...trialing,
+      metadata: { entitlement_keys: 'shared-grant' },
+      status: 'trialing',
+    })
+    const account = store.accountsByOrganization.get(organizationId)
+    expect(account).toBeDefined()
+    if (!account) throw new Error('Expected billing account')
+
+    await processor.reconcile(account.providerCustomerId)
+
+    expect(store.entitlements.get(account.id)).toEqual([
+      expect.objectContaining({ active: true, featureKey: 'shared-grant' }),
+    ])
+  })
+
+  it('keeps every subscription grant when a webhook concerns only one subscription', async () => {
+    const { processor, provider, service, store } = setup()
+    for (const planCode of ['starter-monthly', 'pro-monthly']) {
+      await service.createCheckout({
+        cancelUrl: 'http://localhost:3000/cancel',
+        organizationId,
+        planCode,
+        principal,
+        successUrl: 'http://localhost:3000/success',
+      })
+    }
+    const subscription = [...provider.subscriptions.values()][0]
+    expect(subscription).toBeDefined()
+    if (!subscription) throw new Error('Expected subscription')
+    const event = {
+      created: Math.floor(Date.now() / 1_000),
+      data: {
+        object: { customer: subscription.customerId, id: subscription.id },
+      },
+      id: 'evt_subscription_snapshot',
+      type: 'customer.subscription.updated',
+    }
+    const { rawBody, signature } = signedEvent(event)
+    await service.ingestWebhook(rawBody, signature)
+
+    await processor.process(event.id)
+
+    const account = store.accountsByOrganization.get(organizationId)
+    expect(
+      store.entitlements
+        .get(account?.id ?? '')
         ?.map((entitlement) => entitlement.featureKey)
         .sort(),
     ).toEqual(['exports', 'projects'])

@@ -21,7 +21,7 @@ export class BillingProjectionProcessor {
     if (!event) return
     try {
       if (event.type.startsWith('customer.subscription.')) {
-        await this.projectSubscriptionEvent(event.object, event.createdAt)
+        await this.projectSubscriptionEvent(event.object)
       } else if (event.type.startsWith('invoice.')) {
         await this.projectInvoiceEvent(event.object, event.createdAt)
       } else if (
@@ -44,11 +44,22 @@ export class BillingProjectionProcessor {
   async reconcile(customerId: string): Promise<void> {
     const account = await this.repository.findAccountByCustomer(customerId)
     if (!account) return
+    const snapshotToken = await this.repository.beginEntitlementSnapshot(
+      account.id,
+    )
     const subscriptions = await this.provider.listSubscriptions(customerId)
-    // The list response is authoritative at retrieval time. Its wall-clock
-    // watermark intentionally supersedes the conservative migration baseline,
-    // while webhook projections continue to use provider event ordering.
-    const reconciledAt = new Date()
+    await this.projectSubscriptionSnapshot(
+      account,
+      subscriptions,
+      snapshotToken,
+    )
+  }
+
+  private async projectSubscriptionSnapshot(
+    account: BillingAccount,
+    subscriptions: ProviderSubscription[],
+    snapshotToken: number,
+  ): Promise<void> {
     const entitlements = new Map<string, EntitlementProjection>()
     for (const subscription of subscriptions) {
       await this.upsertSubscription(
@@ -63,21 +74,20 @@ export class BillingProjectionProcessor {
           active: current?.active || active,
           billingAccountId: account.id,
           featureKey,
-          providerUpdatedAt: reconciledAt,
+          providerUpdatedAt: subscription.updatedAt,
           source: 'subscription',
         })
       }
     }
-    await this.repository.replaceEntitlements(
+    await this.repository.replaceEntitlementsFromSnapshot(
       account.id,
       [...entitlements.values()],
-      reconciledAt,
+      snapshotToken,
     )
   }
 
   private async projectSubscriptionEvent(
     object: Record<string, unknown>,
-    providerEventCreatedAt: Date,
   ): Promise<void> {
     const subscriptionId = stringAt(object, 'id')
     const customerId = stringAt(object, 'customer')
@@ -86,35 +96,14 @@ export class BillingProjectionProcessor {
     if (!account) return
     // Stripe events are unordered. Retrieve the present provider state instead
     // of trusting this possibly stale snapshot.
-    const subscription =
-      await this.provider.retrieveSubscription(subscriptionId)
-    if (subscription) {
-      await this.projectSubscription(
-        account,
-        subscription,
-        providerEventCreatedAt,
-      )
-    }
-  }
-
-  private async projectSubscription(
-    account: BillingAccount,
-    subscription: ProviderSubscription,
-    providerUpdatedAt = subscription.updatedAt,
-  ): Promise<void> {
-    await this.upsertSubscription(account, subscription, providerUpdatedAt)
-    const active = ['active', 'trialing'].includes(subscription.status)
-    const entitlementKeys = parseEntitlementKeys(subscription.metadata)
-    await this.repository.replaceEntitlements(
+    const snapshotToken = await this.repository.beginEntitlementSnapshot(
       account.id,
-      entitlementKeys.map((featureKey) => ({
-        active,
-        billingAccountId: account.id,
-        featureKey,
-        providerUpdatedAt,
-        source: 'subscription',
-      })),
-      providerUpdatedAt,
+    )
+    const subscriptions = await this.provider.listSubscriptions(customerId)
+    await this.projectSubscriptionSnapshot(
+      account,
+      subscriptions,
+      snapshotToken,
     )
   }
 

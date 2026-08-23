@@ -1,6 +1,11 @@
 import { randomUUID } from 'node:crypto'
 import { Pool } from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { BillingProjectionProcessor } from '../application/billing-projection.processor'
+import type {
+  BillingProvider,
+  ProviderSubscription,
+} from '../domain/billing.types'
 import { PostgresBillingStore } from './database-billing.store'
 
 const databaseUrl = process.env.DATABASE_RLS_TEST_URL
@@ -95,4 +100,184 @@ describeDatabase('PostgresBillingStore integration', () => {
       (await store.getSummaryForOrganization(organizationId)).entitlements,
     ).toEqual([])
   })
+
+  it('keeps a later account-wide snapshot when an earlier read finishes last', async () => {
+    const earlierToken = await store.beginEntitlementSnapshot(billingAccountId)
+    const laterToken = await store.beginEntitlementSnapshot(billingAccountId)
+    const version = new Date('2026-08-23T15:00:00.000Z')
+    await store.replaceEntitlementsFromSnapshot(
+      billingAccountId,
+      [
+        {
+          active: true,
+          billingAccountId,
+          featureKey: 'later-subscription-grant',
+          providerUpdatedAt: version,
+          source: 'subscription',
+        },
+      ],
+      laterToken,
+    )
+    await store.replaceEntitlementsFromSnapshot(
+      billingAccountId,
+      [
+        {
+          active: true,
+          billingAccountId,
+          featureKey: 'stale-earlier-grant',
+          providerUpdatedAt: version,
+          source: 'subscription',
+        },
+      ],
+      earlierToken,
+    )
+
+    expect(
+      (await store.getSummaryForOrganization(organizationId)).entitlements,
+    ).toEqual([
+      expect.objectContaining({ featureKey: 'later-subscription-grant' }),
+    ])
+  })
+
+  it('persists all grants from one account-wide subscription snapshot', async () => {
+    const token = await store.beginEntitlementSnapshot(billingAccountId)
+    const version = new Date('2026-08-23T16:00:00.000Z')
+    await store.replaceEntitlementsFromSnapshot(
+      billingAccountId,
+      [
+        {
+          active: true,
+          billingAccountId,
+          featureKey: 'subscription-projects',
+          providerUpdatedAt: version,
+          source: 'subscription',
+        },
+        {
+          active: true,
+          billingAccountId,
+          featureKey: 'subscription-exports',
+          providerUpdatedAt: version,
+          source: 'subscription',
+        },
+      ],
+      token,
+    )
+
+    expect(
+      (await store.getSummaryForOrganization(organizationId)).entitlements.map(
+        (entitlement) => entitlement.featureKey,
+      ),
+    ).toEqual(['subscription-exports', 'subscription-projects'])
+  })
+
+  it('keeps every provider subscription grant when a webhook concerns one subscription', async () => {
+    const subscriptions: ProviderSubscription[] = [
+      subscription('subscription-webhook-a', 'subscription-projects'),
+      subscription('subscription-webhook-b', 'subscription-exports'),
+    ]
+    const processor = new BillingProjectionProcessor(
+      providerWithSubscriptions(() => Promise.resolve(subscriptions)),
+      store,
+    )
+    const eventId = `event-${randomUUID()}`
+    await store.insertEvent({
+      createdAt: new Date('2026-08-23T17:00:00.000Z'),
+      id: eventId,
+      object: {
+        customer: `customer-${organizationId}`,
+        id: subscriptions[0]!.id,
+      },
+      provider: 'local',
+      raw: JSON.stringify({
+        data: {
+          object: {
+            customer: `customer-${organizationId}`,
+            id: subscriptions[0]!.id,
+          },
+        },
+      }),
+      type: 'customer.subscription.updated',
+    })
+
+    await processor.process(eventId)
+
+    expect(
+      (await store.getSummaryForOrganization(organizationId)).entitlements.map(
+        (entitlement) => entitlement.featureKey,
+      ),
+    ).toEqual(['subscription-exports', 'subscription-projects'])
+  })
+
+  it('does not let a delayed earlier reconciliation overwrite a later snapshot', async () => {
+    let releaseEarlierRead: (() => void) | undefined
+    const earlierRead = new Promise<ProviderSubscription[]>((resolve) => {
+      releaseEarlierRead = () =>
+        resolve([subscription('subscription-earlier', 'stale-earlier-grant')])
+    })
+    let signalEarlierRead: (() => void) | undefined
+    const earlierReadStarted = new Promise<void>((resolve) => {
+      signalEarlierRead = resolve
+    })
+    let reads = 0
+    const processor = new BillingProjectionProcessor(
+      providerWithSubscriptions(() => {
+        reads += 1
+        if (reads === 1) {
+          signalEarlierRead?.()
+          return earlierRead
+        }
+        return Promise.resolve([
+          subscription('subscription-later', 'later-grant'),
+        ])
+      }),
+      store,
+    )
+
+    const earlier = processor.reconcile(`customer-${organizationId}`)
+    await earlierReadStarted
+    await processor.reconcile(`customer-${organizationId}`)
+    releaseEarlierRead?.()
+    await earlier
+
+    expect(
+      (await store.getSummaryForOrganization(organizationId)).entitlements,
+    ).toEqual([expect.objectContaining({ featureKey: 'later-grant' })])
+  })
 })
+
+function subscription(
+  id: string,
+  entitlementKey: string,
+): ProviderSubscription {
+  return {
+    cancelAtPeriodEnd: false,
+    customerId: 'unused-by-test-provider',
+    id,
+    metadata: { entitlement_keys: entitlementKey },
+    priceId: 'price_test',
+    quantity: 1,
+    status: 'active',
+    updatedAt: new Date('2026-08-23T17:00:00.000Z'),
+  }
+}
+
+function providerWithSubscriptions(
+  listSubscriptions: (customerId: string) => Promise<ProviderSubscription[]>,
+): BillingProvider {
+  return {
+    createCheckoutSession: () =>
+      Promise.resolve({
+        id: 'checkout',
+        url: 'https://test',
+      }),
+    createCustomer: () => Promise.resolve({ id: 'customer' }),
+    createPortalSession: () =>
+      Promise.resolve({ id: 'portal', url: 'https://test' }),
+    listSubscriptions,
+    name: 'local',
+    retrieveSubscription: () => Promise.resolve(null),
+    verifyWebhook: () => {
+      throw new Error('not used in projection tests')
+    },
+  }
+}
