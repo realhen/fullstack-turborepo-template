@@ -14,7 +14,7 @@ before anything is deployed.
 | SaaS data  | Users, external identities, organizations, projects, memberships, roles, permissions, invitations, service accounts, API keys, and audit events                       |
 | Billing    | Controlled plan catalog, Stripe Checkout and Billing Portal, signed/idempotent webhooks, subscription/invoice/entitlement projections, local offline provider         |
 | Async work | Transactional webhook inbox and PostgreSQL leased jobs, retries, and queryable dead-job state                                                                         |
-| AWS        | Optional ECS Fargate web/API/worker, RDS PostgreSQL, WAF, HTTPS ALB, Cloud Map, Secrets Manager, autoscaling, CloudWatch dashboard and alarms                         |
+| AWS        | Independent foundation/API/worker stacks with ECS Fargate, RDS PostgreSQL, WAF, HTTPS ALB, Route 53, Cloud Map, Secrets Manager, autoscaling, dashboards, and alarms  |
 
 Enterprise identity features such as SAML SSO and directory synchronization are
 intentionally outside this template.
@@ -24,7 +24,7 @@ intentionally outside this template.
 - `apps/web` — browser experience and server-rendered API consumption.
 - `apps/api` — modular monolith: auth, organizations, projects, audit, billing, database, and cross-cutting `common` concerns.
 - `apps/worker` — durable asynchronous billing processing.
-- `apps/infra` — AWS CDK production stack.
+- `apps/infra` — independently deployable AWS CDK foundation, API, and worker stacks.
 - `packages/api-client` — generated OpenAPI types and the only frontend API transport.
 - `packages/database` — schema, reviewed SQL migrations, RLS helpers, repositories, and local seed.
 - `packages/billing` — provider-neutral billing and leased-job contracts.
@@ -188,8 +188,9 @@ for diagnostics, but it is not an operator prerequisite for normal rollout.
 After the first release, migrations are reviewed and append-only: never edit,
 rename, or delete an applied migration. Use expand/contract changes that allow
 old and new tasks to run during a rolling overlap. The migration init gate runs
-before API stabilization; then roll out the API, stabilize it, deploy the web
-application, and finally roll out workers.
+before API stabilization; then roll out the API, stabilize it, deploy the
+Vercel frontend independently, and finally roll out workers when they are
+enabled.
 
 ## Type-safe API boundary
 
@@ -212,48 +213,91 @@ and does not identify users, reducing accidental PII collection. Add only an
 explicit, reviewed event taxonomy for product analytics.
 
 The API emits JSON request logs with propagated request IDs and a stable error
-envelope. The AWS stack enables ECS Container Insights and creates a CloudWatch
-dashboard plus alarms for API 5xx responses and database CPU. PostgreSQL job
-state is queryable directly; this adapter does not create SQS queue-age or
-dead-letter alarms. An optional alarm email subscribes to the generated SNS
-topic.
+envelope. The AWS foundation enables ECS Container Insights; the API and worker
+stacks own focused CloudWatch dashboards, while API 5xx and database CPU alarms
+publish to the shared foundation topic. PostgreSQL job state is queryable
+directly; this adapter does not create SQS queue-age or dead-letter alarms. An
+optional alarm email subscribes to the generated SNS topic.
 
 ## AWS deployment
 
-CDK requires an existing regional ACM certificate and domain. Stripe is enabled
-when `applicationSecretsArn` points to a JSON secret containing:
+The Next.js frontend deploys on Vercel; AWS hosts only the API, worker, and
+shared backend resources. A typical domain layout is:
+
+- `fullstack-template.com` and `app.fullstack-template.com` on Vercel.
+- `api.fullstack-template.com` on AWS.
+
+The parent domain may remain registered and hosted in Vercel DNS. The
+`foundation-stack` creates a Route 53 hosted zone for the API subdomain, which
+is delegated from Vercel with one NS record containing the four emitted Route
+53 name servers. The API stack then creates its regional ACM certificate and
+ALB alias inside that delegated zone.
+
+`domainName` is the API hostname. `webOrigin` is the exact Vercel frontend
+origin allowed by the API's browser CORS policy. Both are required CDK context
+values even when deploying only one named stack.
+
+### First deployment
+
+Deploy the foundation first:
+
+```bash
+pnpm --filter @repo/infra exec cdk deploy foundation-stack \
+  -c domainName=api.fullstack-template.com \
+  -c webOrigin=https://app.fullstack-template.com \
+  -c alarmEmail=on-call@example.com
+```
+
+Copy the `ApiHostedZoneNameServers` output into an NS record named `api` in the
+parent domain's Vercel DNS. After public delegation resolves, deploy the API:
+
+```bash
+pnpm --filter @repo/infra exec cdk deploy api-stack \
+  -c domainName=api.fullstack-template.com \
+  -c webOrigin=https://app.fullstack-template.com \
+  -c applicationSecretsArn="$APPLICATION_SECRETS_ARN" \
+  -c authIssuer=https://issuer.example.com/ \
+  -c authJwksUri=https://issuer.example.com/.well-known/jwks.json \
+  -c authAudience=your-api-audience
+```
+
+Deploy the optional background worker independently:
+
+```bash
+pnpm --filter @repo/infra exec cdk deploy worker-stack \
+  -c domainName=api.fullstack-template.com \
+  -c webOrigin=https://app.fullstack-template.com
+```
+
+API and worker depend on the foundation but not on each other. Deploying one
+service never selects the other service. Add `--exclusively` when intentionally
+skipping a foundation dependency check/update. Running `cdk synth` without a
+stack ID synthesizes all three stacks.
+
+Stripe is enabled when `applicationSecretsArn` points to a JSON secret
+containing:
 
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `STRIPE_PRICE_STARTER_MONTHLY`
 - `STRIPE_PRICE_PRO_MONTHLY`
 
-Example:
-
-```bash
-pnpm --filter @repo/infra exec cdk deploy \
-  -c certificateArn="$CERTIFICATE_ARN" \
-  -c domainName=app.example.com \
-  -c hostedZoneId="$HOSTED_ZONE_ID" \
-  -c hostedZoneName=example.com \
-  -c applicationSecretsArn="$APPLICATION_SECRETS_ARN" \
-  -c authIssuer=https://issuer.example.com/ \
-  -c authJwksUri=https://issuer.example.com/.well-known/jwks.json \
-  -c authAudience=your-api-audience \
-  -c alarmEmail=on-call@example.com
-```
-
-The stack outputs a standalone migration task definition, cluster, private
-subnet IDs, and security group. The API task itself has the normal migration
-init gate, so an operator does not need to run the standalone task before a
-schema-dependent rollout. The migration user must be able to create the
-non-login `saas_runtime` role on first deployment; concurrent init containers
-are checksum-verified and serialized by a PostgreSQL advisory lock.
+The foundation and API stacks output the standalone migration task definition,
+cluster, private subnet IDs, database secret, and security groups. The API task
+itself has the normal migration init gate, so an operator does not need to run
+the standalone task before a schema-dependent rollout. The migration user must
+be able to create the non-login `saas_runtime` role on first deployment;
+concurrent init containers are checksum-verified and serialized by a PostgreSQL
+advisory lock.
 
 RDS deletion protection, encrypted storage, Multi-AZ, 14-day backups, secret
 rotation, private subnets, HTTPS, WAF rules, and rolling deployment circuit
-breakers are enabled by default. The stack creates billable resources;
-always review `cdk diff` and AWS pricing first.
+breakers are enabled by default. These stacks create billable resources;
+always review the named stack's `cdk diff` and AWS pricing first.
+
+The reusable Fargate construct accepts any CDK container image, so a future ECR
+and CodePipeline integration can reuse the service stacks. This template does
+not currently create CodePipeline, CodeBuild, or a GitHub connection.
 
 ## CI guarantees
 
