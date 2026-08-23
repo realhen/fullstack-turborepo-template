@@ -120,6 +120,7 @@ apps/infra/
 │   │   └── stack.ts
 │   └── worker/
 │       ├── access-control.ts
+│       ├── database.ts
 │       ├── fargate-service.ts
 │       ├── monitoring.ts
 │       └── stack.ts

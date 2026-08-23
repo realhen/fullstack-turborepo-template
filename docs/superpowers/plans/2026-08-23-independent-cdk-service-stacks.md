@@ -261,6 +261,7 @@ git commit -m "refactor(infra): split API deployment stack"
 **Files:**
 
 - Create: `apps/infra/lib/worker/access-control.ts`
+- Create: `apps/infra/lib/worker/database.ts`
 - Create: `apps/infra/lib/worker/fargate-service.ts`
 - Create: `apps/infra/lib/worker/monitoring.ts`
 - Create: `apps/infra/lib/worker/stack.ts`
@@ -269,6 +270,7 @@ git commit -m "refactor(infra): split API deployment stack"
 **Interfaces:**
 
 - `WorkerStackProps` extends `cdk.StackProps` with foundation cluster, database, security group, VPC-derived settings, worker secret, and `projectName`.
+- `createWorkerDatabaseBindings(database)` returns the worker's standard `PG*` environment and Secrets Manager mappings.
 - `createWorkerService(...)` returns the reusable `FargateService` without load-balancer options.
 - `createWorkerMonitoring(...)` creates one worker operations dashboard and no new alarms.
 - Worker files import no API-stack module or API-stack resource.
@@ -294,7 +296,7 @@ Expected: FAIL because `WorkerStack` does not exist.
 
 - [ ] **Step 3: Implement worker modules**
 
-Use the shared image helper with `apps/worker/Dockerfile` and `aws-runner`. Use the shared Fargate construct with one desired task, CPU autoscaling from one to four, no port, no Cloud Map registration, and no public load balancer. Bind foundation PostgreSQL, worker secret, and worker security group. Keep the access-control module focused on worker-specific bindings and create a CPU/database visibility dashboard without adding unapproved alarm policy.
+Create the worker-specific PostgreSQL environment and secret maps in `worker/database.ts`. Use the shared image helper with `apps/worker/Dockerfile` and `aws-runner`. Use the shared Fargate construct with one desired task, CPU autoscaling from one to four, no port, no Cloud Map registration, and no public load balancer. Bind the foundation worker secret and worker security group. Keep the access-control module focused on worker-specific network bindings and create a CPU/database visibility dashboard without adding unapproved alarm policy.
 
 - [ ] **Step 4: Run worker tests and dependency inspection**
 
