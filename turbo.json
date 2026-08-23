@@ -34,9 +34,11 @@
       "outputs": []
     },
     "typecheck": {
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "test": {
+      "dependsOn": ["^build"],
       "env": ["DATABASE_RLS_TEST_URL"],
       "outputs": []
     },
