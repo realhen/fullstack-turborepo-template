@@ -3,7 +3,7 @@ import {
   type ExecutionContext,
   SetMetadata,
 } from '@nestjs/common'
-import type { ProjectMembership } from '../../saas/projects/project.types'
+import type { ProjectMembership } from '../../projects/domain/project.types'
 import type {
   Principal,
   RequestWithPrincipal,

@@ -6,8 +6,8 @@ import {
   type ExecutionContext,
 } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
-import { ProjectService } from '../../saas/projects/project.service'
-import { assertProjectId } from '../../saas/projects/project-id.pipe'
+import { ProjectService } from '../../projects/application/project.service'
+import { assertProjectId } from '../../projects/presentation/project-id.pipe'
 import {
   AUTHORIZATION_REQUIREMENT,
   type AuthorizationRequirement,

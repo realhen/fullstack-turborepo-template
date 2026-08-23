@@ -11,7 +11,11 @@ const envSchema = z
       .enum(['development', 'test', 'production'])
       .default('development'),
     PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
-    DATABASE_POOL_CONNECTION_TIMEOUT_MS: z.coerce.number().int().min(1).optional(),
+    DATABASE_POOL_CONNECTION_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .optional(),
     DATABASE_POOL_IDLE_TIMEOUT_MS: z.coerce.number().int().min(1).optional(),
     DATABASE_POOL_MAX: z.coerce.number().int().min(1).optional(),
     DATABASE_URL: z.string().min(1).optional(),
