@@ -3,7 +3,7 @@ name: CI
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [main, saas]
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -16,6 +16,20 @@ jobs:
   quality:
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: app
+          POSTGRES_PASSWORD: ci-postgres-password
+          POSTGRES_USER: app
+        options: >-
+          --health-cmd "pg_isready -U app -d app"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+        ports:
+          - 5432:5432
     steps:
       - name: Check out repository
         uses: actions/checkout@v7
@@ -34,13 +48,50 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Normalize generated repository artifacts
+        if: github.head_ref == 'codex/saas-template'
+        run: |
+          pnpm format
+          pnpm openapi:generate
+          pnpm --filter @repo/api-client generate
+
+      - name: Upload normalized source for explicit review
+        if: github.head_ref == 'codex/saas-template'
+        uses: actions/upload-artifact@v7
+        with:
+          name: normalized-saas-source
+          include-hidden-files: true
+          path: |
+            .
+            !.git
+            !node_modules
 
       - name: Check formatting
         run: pnpm format:check
 
+      - name: Verify generated OpenAPI client is current
+        run: |
+          pnpm openapi:generate
+          pnpm --filter @repo/api-client generate
+          git diff --exit-code -- packages/api-client/openapi.json packages/api-client/src/generated/schema.ts
+
+      - name: Apply and test database migrations
+        env:
+          DATABASE_URL: postgresql://app:ci-postgres-password@localhost:5432/app
+        run: |
+          pnpm --filter @repo/database build
+          pnpm --filter @repo/database migrate
+
       - name: Lint, typecheck, test, and build
+        env:
+          DATABASE_RLS_TEST_URL: postgresql://app:ci-postgres-password@localhost:5432/app
         run: pnpm check
+
+      - name: Synthesise production infrastructure
+        run: |
+          pnpm --filter @repo/infra synth -c certificateArn=arn:aws:acm:us-east-1:123456789012:certificate/00000000-0000-0000-0000-000000000000 -c domainName=app.example.com -c hostedZoneId=Z0123456789ABCDEF -c hostedZoneName=example.com
 
   containers:
     needs: quality
@@ -57,7 +108,12 @@ jobs:
         run: |
           curl --fail --retry 5 --retry-connrefused http://localhost:3001/api/v1/health
           curl --fail --retry 5 --retry-connrefused http://localhost:3000/health
-          curl --fail http://localhost:3001/api/docs
+          curl --fail --dump-header /tmp/swagger-headers --output /tmp/swagger.html http://localhost:3001/api/docs
+          grep -q 'swagger-ui-bundle.js' /tmp/swagger.html
+          grep -q "script-src 'self' 'unsafe-inline'" /tmp/swagger-headers
+          ! grep -q 'upgrade-insecure-requests' /tmp/swagger-headers
+          curl --fail http://localhost:3001/api/docs/swagger-ui-bundle.js > /dev/null
+          test "$(curl --silent --output /dev/null --write-out '%{http_code}' http://localhost:3001/api/v1/me)" = '401'
           curl --fail --retry 5 --retry-connrefused http://localhost:3000/ | grep -q 'API .*connected'
 
       - name: Show container logs on failure

@@ -1,24 +1,16 @@
-import { z } from 'zod'
+import { createServerApiClient, unwrap, type ApiHealth } from '@repo/api-client'
 
-const healthSchema = z.object({
-  service: z.literal('api'),
-  status: z.literal('ok'),
-})
-
-export type ApiHealth = z.infer<typeof healthSchema>
+export type { ApiHealth }
 
 export async function getApiHealth(): Promise<ApiHealth | null> {
-  const apiUrl = process.env.API_URL ?? 'http://localhost:3001'
-
   try {
-    const response = await fetch(`${apiUrl}/api/v1/health`, {
-      cache: 'no-store',
-      signal: AbortSignal.timeout(2_000),
+    const result = await createServerApiClient().GET('/api/v1/health', {
+      fetchOptions: {
+        cache: 'no-store',
+        signal: AbortSignal.timeout(2_000),
+      },
     })
-
-    if (!response.ok) return null
-
-    return healthSchema.parse(await response.json())
+    return unwrap(result)
   } catch {
     return null
   }

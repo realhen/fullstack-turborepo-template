@@ -11,10 +11,14 @@ const nameFlagIndex = process.argv.indexOf('--name')
 const projectName =
   nameFlagIndex >= 0 ? process.argv[nameFlagIndex + 1] : undefined
 
-if (!projectName || !/^[a-z][a-z0-9-]*$/.test(projectName)) {
+if (
+  !projectName ||
+  projectName.length > 63 ||
+  !/^[a-z](?:[a-z0-9-]*[a-z0-9])?$/.test(projectName)
+) {
   console.error('Usage: pnpm bootstrap --name my-app')
   console.error(
-    'Names must start with a letter and contain lowercase letters, numbers, or hyphens.',
+    'Names must be at most 63 characters, start with a lowercase letter, end with a lowercase letter or number, and contain only lowercase letters, numbers, or hyphens.',
   )
   process.exitCode = 1
 } else {
