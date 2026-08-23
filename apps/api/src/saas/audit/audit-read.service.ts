@@ -3,7 +3,9 @@ import { AUDIT_READ_STORE, type AuditReadStore } from './audit-read.types'
 
 @Injectable()
 export class AuditReadService {
-  constructor(@Inject(AUDIT_READ_STORE) private readonly audit: AuditReadStore) {}
+  constructor(
+    @Inject(AUDIT_READ_STORE) private readonly audit: AuditReadStore,
+  ) {}
 
   async list(
     organizationId: string,
@@ -33,13 +35,18 @@ export class AuditReadService {
 
   private encodeCursor(cursor: { id: string; occurredAt: Date }): string {
     return Buffer.from(
-      JSON.stringify({ id: cursor.id, occurredAt: cursor.occurredAt.toISOString() }),
+      JSON.stringify({
+        id: cursor.id,
+        occurredAt: cursor.occurredAt.toISOString(),
+      }),
     ).toString('base64url')
   }
 
   private decodeCursor(value: string): { id: string; occurredAt: Date } {
     try {
-      const parsed = JSON.parse(Buffer.from(value, 'base64url').toString('utf8')) as {
+      const parsed = JSON.parse(
+        Buffer.from(value, 'base64url').toString('utf8'),
+      ) as {
         id?: unknown
         occurredAt?: unknown
       }
@@ -47,7 +54,11 @@ export class AuditReadService {
         typeof parsed.occurredAt === 'string'
           ? new Date(parsed.occurredAt)
           : undefined
-      if (typeof parsed.id !== 'string' || !occurredAt || Number.isNaN(occurredAt.valueOf())) {
+      if (
+        typeof parsed.id !== 'string' ||
+        !occurredAt ||
+        Number.isNaN(occurredAt.valueOf())
+      ) {
         throw new Error('Invalid audit cursor')
       }
       return { id: parsed.id, occurredAt }

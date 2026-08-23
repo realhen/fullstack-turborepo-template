@@ -56,7 +56,9 @@ export class SqsQueueConsumer {
   }
 }
 
-export async function createAwsSqsTransport(region?: string): Promise<SqsTransport> {
+export async function createAwsSqsTransport(
+  region?: string,
+): Promise<SqsTransport> {
   const moduleName = '@aws-sdk/client-sqs'
   const sdk = (await import(moduleName)) as {
     DeleteMessageCommand: new (input: Record<string, unknown>) => unknown

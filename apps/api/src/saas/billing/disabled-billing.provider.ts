@@ -14,7 +14,10 @@ export class DisabledBillingProvider implements BillingProvider {
     throw new ServiceUnavailableException('Billing is not enabled')
   }
 
-  createCustomer(_input: { organizationId: string; email?: string }): Promise<{ id: string }> {
+  createCustomer(_input: {
+    organizationId: string
+    email?: string
+  }): Promise<{ id: string }> {
     return this.unavailable()
   }
 
@@ -39,7 +42,10 @@ export class DisabledBillingProvider implements BillingProvider {
     return this.unavailable()
   }
 
-  verifyWebhook(_input: { rawBody: Buffer; signature?: string }): VerifiedBillingEvent {
+  verifyWebhook(_input: {
+    rawBody: Buffer
+    signature?: string
+  }): VerifiedBillingEvent {
     return this.unavailable()
   }
 

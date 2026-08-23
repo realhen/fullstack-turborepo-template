@@ -25,12 +25,13 @@ export class DatabaseIdentityResolver implements IdentityResolver {
         'A verified provider email is required for first-time provisioning',
       )
     }
-    const provisionedUserId = await this.authorizationLookup.provisionLinkedUser({
-      email: principal.email,
-      issuer: principal.provider,
-      provider: principal.provider,
-      subject: principal.id,
-    })
+    const provisionedUserId =
+      await this.authorizationLookup.provisionLinkedUser({
+        email: principal.email,
+        issuer: principal.provider,
+        provider: principal.provider,
+        subject: principal.id,
+      })
     return { ...principal, userId: provisionedUserId }
   }
 }

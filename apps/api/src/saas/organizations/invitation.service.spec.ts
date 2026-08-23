@@ -6,7 +6,9 @@ import { InvitationService } from './invitation.service'
 describe('InvitationService', () => {
   it('prevents duplicate active invitations and returns the token once', async () => {
     const service = new InvitationService(new InMemoryInvitationStore())
-    const first = await service.create('org-a', 'user-a', { email: 'person@example.com' })
+    const first = await service.create('org-a', 'user-a', {
+      email: 'person@example.com',
+    })
 
     expect(first.token).toMatch(/^inv_/)
     await expect(
@@ -25,7 +27,10 @@ describe('InvitationService', () => {
     const service = new InvitationService(store)
 
     await expect(
-      service.accept(`inv_${token}`, { email: 'person@example.com', userId: 'user-b' }),
+      service.accept(`inv_${token}`, {
+        email: 'person@example.com',
+        userId: 'user-b',
+      }),
     ).rejects.toThrow('expired')
   })
 })

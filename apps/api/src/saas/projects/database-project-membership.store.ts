@@ -50,12 +50,17 @@ export class DatabaseProjectMembershipStore implements ProjectMembershipStore {
       this.pool,
       { actorId, organizationId },
       (repository) =>
-        repository.listProjectMemberships({ actorId, organizationId }, projectId),
+        repository.listProjectMemberships(
+          { actorId, organizationId },
+          projectId,
+        ),
     )
     return memberships.map((membership) => this.toProjectMembership(membership))
   }
 
-  async upsertMembership(membership: ProjectMembership): Promise<ProjectMembership> {
+  async upsertMembership(
+    membership: ProjectMembership,
+  ): Promise<ProjectMembership> {
     throw new Error(
       `Project ${membership.project.id} membership writes require a tenant-scoped operation`,
     )
@@ -67,7 +72,9 @@ export class DatabaseProjectMembershipStore implements ProjectMembershipStore {
     membership: ProjectMembership,
   ): Promise<ProjectMembership> {
     if (!membership.project.organizationId) {
-      throw new Error('Project organization context is required for database writes')
+      throw new Error(
+        'Project organization context is required for database writes',
+      )
     }
     if (membership.project.organizationId !== organizationId) {
       throw new Error('Project organization does not match tenant context')

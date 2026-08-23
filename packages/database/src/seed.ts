@@ -6,8 +6,13 @@ const localProjectId = '00000000-0000-4000-8000-000000000002'
 const localUserId = '00000000-0000-4000-8000-000000000003'
 const ownerRoleId = '00000000-0000-4000-8000-000000000004'
 function requireLocalSeedUrl(): string {
-  if (process.env.NODE_ENV === 'production' || process.env.DATABASE_SEED_LOCAL !== 'true') {
-    throw new Error('Seeding requires NODE_ENV != production and DATABASE_SEED_LOCAL=true')
+  if (
+    process.env.NODE_ENV === 'production' ||
+    process.env.DATABASE_SEED_LOCAL !== 'true'
+  ) {
+    throw new Error(
+      'Seeding requires NODE_ENV != production and DATABASE_SEED_LOCAL=true',
+    )
   }
   return requireDatabaseUrl()
 }

@@ -28,7 +28,9 @@ export function verifyStripeWebhookSignature(input: {
   const tolerance = input.toleranceSeconds ?? 300
   const nowSeconds = Math.floor((input.now?.getTime() ?? Date.now()) / 1000)
   if (Math.abs(nowSeconds - parsedTimestamp) > tolerance) {
-    throw new BadRequestException('Stripe webhook timestamp is outside tolerance')
+    throw new BadRequestException(
+      'Stripe webhook timestamp is outside tolerance',
+    )
   }
 
   const expected = createHmac('sha256', input.secret)

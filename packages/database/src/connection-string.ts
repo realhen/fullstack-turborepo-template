@@ -24,12 +24,7 @@ export function databaseUrlFromEnvironment(
   } catch {
     throw new Error('DATABASE_SECRET must be valid RDS secret JSON')
   }
-  if (
-    !secret.host ||
-    !secret.username ||
-    !secret.password ||
-    !secret.dbname
-  ) {
+  if (!secret.host || !secret.username || !secret.password || !secret.dbname) {
     throw new Error(
       'DATABASE_SECRET requires host, username, password, and dbname fields',
     )
@@ -50,4 +45,3 @@ export function requireDatabaseUrl(
   }
   return databaseUrl
 }
-

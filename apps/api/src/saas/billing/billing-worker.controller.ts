@@ -41,7 +41,8 @@ export class BillingWorkerController {
 
   private assertWorkerSecret(secret: string | undefined): void {
     const expected = this.config.getOrThrow<string>('WORKER_SECRET')
-    if (!secret) throw new ForbiddenException('Worker authentication is required')
+    if (!secret)
+      throw new ForbiddenException('Worker authentication is required')
     const actualBuffer = Buffer.from(secret)
     const expectedBuffer = Buffer.from(expected)
     if (

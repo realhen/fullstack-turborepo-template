@@ -11,7 +11,11 @@ export class ProjectManagementService {
     private readonly projects: ProjectManagementStore,
   ) {}
 
-  create(organizationId: string, actorId: string, input: { name: string; slug: string }) {
+  create(
+    organizationId: string,
+    actorId: string,
+    input: { name: string; slug: string },
+  ) {
     return this.projects.create(organizationId, actorId, input)
   }
 

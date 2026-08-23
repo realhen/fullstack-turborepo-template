@@ -144,12 +144,14 @@ export class BillingOutboxDispatcher {
     private readonly publisher: BillingOutboxPublisher,
   ) {}
 
-  async dispatchOnce(input: {
-    now?: Date
-    limit?: number
-    leaseForMilliseconds?: number
-    retryDelayMilliseconds?: number
-  } = {}): Promise<{ failed: number; sent: number }> {
+  async dispatchOnce(
+    input: {
+      now?: Date
+      limit?: number
+      leaseForMilliseconds?: number
+      retryDelayMilliseconds?: number
+    } = {},
+  ): Promise<{ failed: number; sent: number }> {
     const now = input.now ?? new Date()
     const retryDelayMilliseconds = input.retryDelayMilliseconds ?? 30_000
     const claimed = await this.store.claimBatch({
@@ -167,7 +169,8 @@ export class BillingOutboxDispatcher {
         failed += 1
         await this.store.releaseClaim({
           claimed: message,
-          error: error instanceof Error ? error.message : 'Outbox publish failed',
+          error:
+            error instanceof Error ? error.message : 'Outbox publish failed',
           retryAt: new Date(now.getTime() + retryDelayMilliseconds),
         })
       }

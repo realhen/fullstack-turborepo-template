@@ -62,7 +62,9 @@ export class StripeBillingProvider implements BillingProvider {
         {
           cancel_url: input.cancelUrl,
           customer: input.customerId,
-          line_items: [{ price: input.plan.providerPriceId, quantity: input.quantity }],
+          line_items: [
+            { price: input.plan.providerPriceId, quantity: input.quantity },
+          ],
           metadata: input.metadata,
           mode: 'subscription',
           subscription_data: { metadata: input.metadata },
@@ -71,7 +73,8 @@ export class StripeBillingProvider implements BillingProvider {
         { idempotencyKey },
       ),
     )
-    if (!session.url) throw new BadGatewayException('Stripe Checkout did not return a URL')
+    if (!session.url)
+      throw new BadGatewayException('Stripe Checkout did not return a URL')
     return { id: session.id, url: session.url }
   }
 
@@ -141,7 +144,9 @@ export class StripeBillingProvider implements BillingProvider {
   }
 }
 
-function toSubscription(subscription: Stripe.Subscription): ProviderSubscription {
+function toSubscription(
+  subscription: Stripe.Subscription,
+): ProviderSubscription {
   const item = subscription.items.data[0]
   const customer =
     typeof subscription.customer === 'string'

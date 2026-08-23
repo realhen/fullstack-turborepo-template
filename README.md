@@ -7,14 +7,14 @@ is deployed.
 
 ## Included
 
-| Area | What is ready |
-| --- | --- |
-| Web | Next.js App Router SaaS shell, organization/project selector, generated API client, graceful auth/error states, optional PostHog |
-| API | NestJS, OpenAPI, OIDC/local authentication adapters, durable identity linking, organization/project authorization, validation, throttling, structured errors and logs |
-| SaaS data | Users, external identities, organizations, projects, memberships, roles, permissions, invitations, service accounts, API keys, and audit events |
-| Billing | Controlled plan catalog, Stripe Checkout and Billing Portal, signed/idempotent webhooks, subscription/invoice/entitlement projections, local offline provider |
-| Async work | Transactional webhook inbox/outbox, SQS worker, retries and leases, LocalStack adapter |
-| AWS | ECS Fargate web/API/worker, RDS PostgreSQL, SQS/DLQ, WAF, HTTPS ALB, Cloud Map, Secrets Manager, autoscaling, CloudWatch dashboard and alarms |
+| Area       | What is ready                                                                                                                                                         |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web        | Next.js App Router SaaS shell, organization/project selector, generated API client, graceful auth/error states, optional PostHog                                      |
+| API        | NestJS, OpenAPI, OIDC/local authentication adapters, durable identity linking, organization/project authorization, validation, throttling, structured errors and logs |
+| SaaS data  | Users, external identities, organizations, projects, memberships, roles, permissions, invitations, service accounts, API keys, and audit events                       |
+| Billing    | Controlled plan catalog, Stripe Checkout and Billing Portal, signed/idempotent webhooks, subscription/invoice/entitlement projections, local offline provider         |
+| Async work | Transactional webhook inbox/outbox, SQS worker, retries and leases, LocalStack adapter                                                                                |
+| AWS        | ECS Fargate web/API/worker, RDS PostgreSQL, SQS/DLQ, WAF, HTTPS ALB, Cloud Map, Secrets Manager, autoscaling, CloudWatch dashboard and alarms                         |
 
 Enterprise identity features such as SAML SSO and directory synchronization are
 intentionally outside this template.

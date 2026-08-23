@@ -1,4 +1,9 @@
-import { ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common'
+import {
+  ConflictException,
+  Inject,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common'
 import { randomBytes, scrypt as nodeScrypt, timingSafeEqual } from 'node:crypto'
 import { promisify } from 'node:util'
 import { API_KEY_STORE, type ApiKeyStore } from './api-key.types'
@@ -26,7 +31,10 @@ export class ApiKeyService {
     const secret = randomBytes(32).toString('base64url')
     const prefix = `sk_${randomBytes(9).toString('base64url')}`
     const expiresAt = input.expiresAt ? new Date(input.expiresAt) : undefined
-    if (expiresAt && (Number.isNaN(expiresAt.valueOf()) || expiresAt <= new Date())) {
+    if (
+      expiresAt &&
+      (Number.isNaN(expiresAt.valueOf()) || expiresAt <= new Date())
+    ) {
       throw new ConflictException('API key expiry must be in the future')
     }
     const normalizedScopes = [
@@ -50,7 +58,8 @@ export class ApiKeyService {
         ...(expiresAt ? { expiresAt } : {}),
       }
     } catch (error) {
-      if (this.isDuplicate(error)) throw new ConflictException('Please retry API key creation')
+      if (this.isDuplicate(error))
+        throw new ConflictException('Please retry API key creation')
       throw error
     }
   }
@@ -95,9 +104,9 @@ export class ApiKeyService {
   private async hash(secret: string): Promise<string> {
     const salt = randomBytes(16)
     const derived = await scrypt(secret, salt, KEY_LENGTH)
-    return `scrypt$${salt.toString('base64url')}$${Buffer.from(derived).toString(
-      'base64url',
-    )}`
+    return `scrypt$${salt.toString('base64url')}$${Buffer.from(
+      derived,
+    ).toString('base64url')}`
   }
 
   private async matches(secret: string, encoded: string): Promise<boolean> {
@@ -112,20 +121,29 @@ export class ApiKeyService {
           expected.length,
         ),
       )
-      return expected.length === actual.length && timingSafeEqual(expected, actual)
+      return (
+        expected.length === actual.length && timingSafeEqual(expected, actual)
+      )
     } catch {
       return false
     }
   }
 
   private parse(value: string): { prefix: string; secret: string } | null {
-    const match = /^(sk_[A-Za-z0-9_-]{8,64})\.([A-Za-z0-9_-]{32,128})$/.exec(value)
+    const match = /^(sk_[A-Za-z0-9_-]{8,64})\.([A-Za-z0-9_-]{32,128})$/.exec(
+      value,
+    )
     const prefix = match?.[1]
     const secret = match?.[2]
     return prefix && secret ? { prefix, secret } : null
   }
 
   private isDuplicate(error: unknown): boolean {
-    return typeof error === 'object' && error !== null && 'code' in error && error.code === '23505'
+    return (
+      typeof error === 'object' &&
+      error !== null &&
+      'code' in error &&
+      error.code === '23505'
+    )
   }
 }

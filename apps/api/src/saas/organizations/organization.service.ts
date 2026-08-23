@@ -20,7 +20,10 @@ export class OrganizationService {
     organizationId: string,
     userId: string,
   ): Promise<OrganizationMembership> {
-    const membership = await this.memberships.getMembership(organizationId, userId)
+    const membership = await this.memberships.getMembership(
+      organizationId,
+      userId,
+    )
     if (!membership) throw new NotFoundException('Organization was not found')
     return membership
   }

@@ -25,7 +25,10 @@ export default async function OverviewPage({
       </p>
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <Metric label="Project" value={project?.name ?? 'No project'} />
-        <Metric label="Authentication" value={workspace.provider ?? 'Unavailable'} />
+        <Metric
+          label="Authentication"
+          value={workspace.provider ?? 'Unavailable'}
+        />
         <Metric
           label="API status"
           tone={apiHealth ? 'good' : 'warn'}

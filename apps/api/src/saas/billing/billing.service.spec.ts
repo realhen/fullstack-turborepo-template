@@ -70,9 +70,9 @@ describe('BillingService', () => {
     expect(checkout.url).toStartWith('https://local.billing.test/checkout/')
     expect(portal.url).toContain('/portal/local_cus_organization_1')
     expect(store.subscriptions).toHaveLength(0)
-    expect(store.accountsByOrganization.get(organizationId)?.providerCustomerId).toBe(
-      'local_cus_organization_1',
-    )
+    expect(
+      store.accountsByOrganization.get(organizationId)?.providerCustomerId,
+    ).toBe('local_cus_organization_1')
   })
 
   it('rejects billing operations without organization billing authority', async () => {
@@ -123,9 +123,9 @@ describe('BillingService', () => {
       }),
     )
 
-    await expect(service.ingestWebhook(rawBody, 't=1,v1=incorrect')).rejects.toBeInstanceOf(
-      BadRequestException,
-    )
+    await expect(
+      service.ingestWebhook(rawBody, 't=1,v1=incorrect'),
+    ).rejects.toBeInstanceOf(BadRequestException)
     expect(store.events).toHaveLength(0)
   })
 
@@ -176,9 +176,11 @@ describe('BillingService', () => {
     await processor.process('evt_subscription_stale')
 
     expect(store.subscriptions.get(subscription.id)?.status).toBe('canceled')
-    expect(store.entitlements.get(
-      store.accountsByOrganization.get(organizationId)?.id ?? '',
-    )).toEqual(
+    expect(
+      store.entitlements.get(
+        store.accountsByOrganization.get(organizationId)?.id ?? '',
+      ),
+    ).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ active: false, featureKey: 'exports' }),
       ]),

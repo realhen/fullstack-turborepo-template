@@ -10,4 +10,6 @@ export interface OrganizationManagementStore {
   ): Promise<{ id: string; name: string; slug: string }>
 }
 
-export const ORGANIZATION_MANAGEMENT_STORE = Symbol('ORGANIZATION_MANAGEMENT_STORE')
+export const ORGANIZATION_MANAGEMENT_STORE = Symbol(
+  'ORGANIZATION_MANAGEMENT_STORE',
+)

@@ -40,7 +40,10 @@ export class LocalBillingProvider implements BillingProvider {
       status: 'active',
       updatedAt: new Date(),
     })
-    return Promise.resolve({ id, url: `https://local.billing.test/checkout/${id}` })
+    return Promise.resolve({
+      id,
+      url: `https://local.billing.test/checkout/${id}`,
+    })
   }
 
   createPortalSession(input: {

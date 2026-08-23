@@ -6,7 +6,9 @@ import {
 
 describe('SqsBillingOutboxPublisher', () => {
   it('serializes a billing message for the configured SQS queue', async () => {
-    const transport: SqsPublisherTransport = { send: vi.fn().mockResolvedValue(undefined) }
+    const transport: SqsPublisherTransport = {
+      send: vi.fn().mockResolvedValue(undefined),
+    }
     const publisher = new SqsBillingOutboxPublisher(transport, 'queue-url')
 
     await publisher.publish({ eventId: 'evt_1', kind: 'billing.webhook' })

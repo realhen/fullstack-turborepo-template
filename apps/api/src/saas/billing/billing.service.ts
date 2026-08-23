@@ -61,7 +61,9 @@ export class BillingService {
     )
     const quantity = input.quantity ?? 1
     if (!Number.isSafeInteger(quantity) || quantity < 1) {
-      throw new ForbiddenException('Billing quantity must be a positive integer')
+      throw new ForbiddenException(
+        'Billing quantity must be a positive integer',
+      )
     }
     const correlationId = input.requestId ?? randomUUID()
     return this.provider.createCheckoutSession(
@@ -98,7 +100,10 @@ export class BillingService {
   }
 
   /** Redirects are deliberately non-authoritative; only the webhook changes state. */
-  async ingestWebhook(rawBody: Buffer, signature?: string): Promise<{
+  async ingestWebhook(
+    rawBody: Buffer,
+    signature?: string,
+  ): Promise<{
     duplicate: boolean
     eventId: string
   }> {
@@ -108,7 +113,8 @@ export class BillingService {
   }
 
   async enqueueReconciliation(organizationId: string): Promise<void> {
-    const account = await this.repository.findAccountByOrganization(organizationId)
+    const account =
+      await this.repository.findAccountByOrganization(organizationId)
     if (account) {
       await this.outbox.enqueue({
         customerId: account.providerCustomerId,
@@ -121,9 +127,13 @@ export class BillingService {
     organizationId: string,
     email?: string,
   ): Promise<BillingAccount> {
-    const current = await this.repository.findAccountByOrganization(organizationId)
+    const current =
+      await this.repository.findAccountByOrganization(organizationId)
     if (current) return current
-    const customer = await this.provider.createCustomer({ email, organizationId })
+    const customer = await this.provider.createCustomer({
+      email,
+      organizationId,
+    })
     return this.repository.createAccount({
       createdAt: new Date(),
       id: `billing_account_${randomUUID()}`,
@@ -142,7 +152,9 @@ export class BillingService {
       userId,
     )
     if (!membership?.canManageBilling) {
-      throw new ForbiddenException('Organization billing administrator access is required')
+      throw new ForbiddenException(
+        'Organization billing administrator access is required',
+      )
     }
   }
 }

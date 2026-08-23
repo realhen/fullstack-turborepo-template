@@ -64,16 +64,12 @@ const envSchema = z
     ) {
       context.addIssue({
         code: 'custom',
-        message:
-          'DATABASE_URL or DATABASE_SECRET is required in production.',
+        message: 'DATABASE_URL or DATABASE_SECRET is required in production.',
         path: ['DATABASE_URL'],
       })
     }
 
-    if (
-      value.NODE_ENV === 'production' &&
-      value.BILLING_PROVIDER === 'local'
-    ) {
+    if (value.NODE_ENV === 'production' && value.BILLING_PROVIDER === 'local') {
       context.addIssue({
         code: 'custom',
         message:

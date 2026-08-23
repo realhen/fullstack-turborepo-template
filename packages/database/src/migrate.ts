@@ -34,7 +34,9 @@ async function migrate(): Promise<void> {
       )
       if (applied.rowCount) {
         if (applied.rows[0]?.checksum !== checksum) {
-          throw new Error(`Migration ${filename} was modified after application`)
+          throw new Error(
+            `Migration ${filename} was modified after application`,
+          )
         }
         continue
       }
@@ -53,7 +55,9 @@ async function migrate(): Promise<void> {
       }
     }
   } finally {
-    await client.query('SELECT pg_advisory_unlock(892811020)').catch(() => undefined)
+    await client
+      .query('SELECT pg_advisory_unlock(892811020)')
+      .catch(() => undefined)
     client.release()
     await pool.end()
   }

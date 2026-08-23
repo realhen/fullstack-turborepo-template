@@ -23,8 +23,7 @@ export function SaasShell({
   const organization =
     workspace.organizations.find(
       (item) => item.id === searchParams.get('organization'),
-    ) ??
-    workspace.organizations[0]
+    ) ?? workspace.organizations[0]
   const projects = organization
     ? (workspace.projectsByOrganization[organization.id] ?? [])
     : []
@@ -109,7 +108,10 @@ export function SaasShell({
       </header>
       <div className="mx-auto grid max-w-7xl gap-8 px-4 py-8 sm:px-6 lg:grid-cols-[13rem_1fr]">
         <aside>
-          <nav aria-label="Workspace" className="flex gap-1 overflow-x-auto lg:flex-col">
+          <nav
+            aria-label="Workspace"
+            className="flex gap-1 overflow-x-auto lg:flex-col"
+          >
             {navigation.map((item) => {
               const active = pathname === item.href
               return (

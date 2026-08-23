@@ -1,5 +1,9 @@
 import { Inject, Injectable } from '@nestjs/common'
-import { AUDIT_STORE, type AuditEventInput, type AuditStore } from './audit.types'
+import {
+  AUDIT_STORE,
+  type AuditEventInput,
+  type AuditStore,
+} from './audit.types'
 
 const forbiddenMetadataKeys = new Set([
   'access_token',

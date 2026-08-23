@@ -21,7 +21,10 @@ import {
   AuthenticationService,
 } from './auth/authentication.service'
 import { DatabaseIdentityResolver } from './auth/database-identity-resolver'
-import { IDENTITY_RESOLVER, type IdentityResolver } from './auth/identity-resolver'
+import {
+  IDENTITY_RESOLVER,
+  type IdentityResolver,
+} from './auth/identity-resolver'
 import { ScopeGuard } from './auth/scope.guard'
 import { BillingModule } from './billing/billing.module'
 import { ApiKeyController } from './organizations/api-key.controller'
@@ -140,8 +143,12 @@ export const SAAS_DATABASE_POOL = Symbol('SAAS_DATABASE_POOL')
                 {
                   organization: {
                     id: config.getOrThrow<string>('AUTH_LOCAL_ORGANIZATION_ID'),
-                    name: config.getOrThrow<string>('AUTH_LOCAL_ORGANIZATION_NAME'),
-                    slug: config.getOrThrow<string>('AUTH_LOCAL_ORGANIZATION_SLUG'),
+                    name: config.getOrThrow<string>(
+                      'AUTH_LOCAL_ORGANIZATION_NAME',
+                    ),
+                    slug: config.getOrThrow<string>(
+                      'AUTH_LOCAL_ORGANIZATION_SLUG',
+                    ),
                   },
                   role: 'owner',
                   userId: config.getOrThrow<string>('AUTH_LOCAL_SUBJECT'),
@@ -206,7 +213,9 @@ export const SAAS_DATABASE_POOL = Symbol('SAAS_DATABASE_POOL')
       provide: INVITATION_STORE,
       inject: [SAAS_DATABASE_POOL],
       useFactory: (pool: Pool | null) =>
-        pool ? new DatabaseInvitationStore(pool) : new InMemoryInvitationStore(),
+        pool
+          ? new DatabaseInvitationStore(pool)
+          : new InMemoryInvitationStore(),
     },
     {
       provide: API_KEY_STORE,

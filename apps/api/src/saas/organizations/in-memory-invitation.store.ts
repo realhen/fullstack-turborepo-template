@@ -25,7 +25,9 @@ export class InMemoryInvitationStore implements InvitationStore {
         !invitation.revokedAt,
     )
     if (duplicate) {
-      const error = Object.assign(new Error('Duplicate invitation'), { code: '23505' })
+      const error = Object.assign(new Error('Duplicate invitation'), {
+        code: '23505',
+      })
       throw error
     }
     const id = randomUUID()
@@ -51,7 +53,10 @@ export class InMemoryInvitationStore implements InvitationStore {
     return true
   }
 
-  async accept(tokenHash: string, user: { email: string; userId: string }): Promise<boolean> {
+  async accept(
+    tokenHash: string,
+    user: { email: string; userId: string },
+  ): Promise<boolean> {
     const invitation = [...this.invitations.values()].find(
       (candidate) => candidate.tokenHash === tokenHash,
     )

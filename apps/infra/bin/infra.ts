@@ -15,8 +15,10 @@ const applicationSecretsArn = app.node.tryGetContext(
   'applicationSecretsArn',
 ) as string | undefined
 const alarmEmail = app.node.tryGetContext('alarmEmail') as string | undefined
-const authAudience = app.node.tryGetContext('authAudience') as string | undefined
-const authClientId = app.node.tryGetContext('authClientId') as string | undefined
+const authAudience = app.node.tryGetContext('authAudience') as
+  string | undefined
+const authClientId = app.node.tryGetContext('authClientId') as
+  string | undefined
 const authIssuer = app.node.tryGetContext('authIssuer') as string | undefined
 const authJwksUri = app.node.tryGetContext('authJwksUri') as string | undefined
 

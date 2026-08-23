@@ -3,7 +3,9 @@
 import { useEffect, type ReactNode } from 'react'
 
 /** Analytics is inert unless a public PostHog key is configured. */
-export function PostHogProvider({ children }: Readonly<{ children: ReactNode }>) {
+export function PostHogProvider({
+  children,
+}: Readonly<{ children: ReactNode }>) {
   useEffect(() => {
     const key = process.env.NEXT_PUBLIC_POSTHOG_KEY
     const host = process.env.NEXT_PUBLIC_POSTHOG_HOST

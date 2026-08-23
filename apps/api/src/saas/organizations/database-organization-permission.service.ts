@@ -2,9 +2,7 @@ import { withTenantRepository } from '@repo/database'
 import type { Pool } from 'pg'
 import type { OrganizationPermissionEvaluator } from './organization-permission.service'
 
-export class DatabaseOrganizationPermissionService
-  implements OrganizationPermissionEvaluator
-{
+export class DatabaseOrganizationPermissionService implements OrganizationPermissionEvaluator {
   constructor(private readonly pool: Pool) {}
 
   async hasAll(

@@ -9,9 +9,7 @@ const PROJECT_ID =
 
 export function assertProjectId(value: string): string {
   if (!PROJECT_ID.test(value)) {
-    throw new BadRequestException(
-      'projectId must be a version 4 UUID',
-    )
+    throw new BadRequestException('projectId must be a version 4 UUID')
   }
   return value
 }

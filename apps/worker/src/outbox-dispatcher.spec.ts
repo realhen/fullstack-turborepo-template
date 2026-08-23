@@ -25,7 +25,9 @@ class MemoryOutboxStore implements BillingOutboxStore {
     return true
   }
 
-  async releaseClaim(input: { claimed: ClaimedBillingOutboxMessage }): Promise<void> {
+  async releaseClaim(input: {
+    claimed: ClaimedBillingOutboxMessage
+  }): Promise<void> {
     this.released.push(input.claimed)
   }
 }
@@ -39,9 +41,13 @@ const claimed: ClaimedBillingOutboxMessage = {
 describe('BillingOutboxDispatcher', () => {
   it('marks an outbox row sent only after a successful publish', async () => {
     const store = new MemoryOutboxStore([claimed])
-    const publisher: BillingOutboxPublisher = { publish: vi.fn().mockResolvedValue(undefined) }
+    const publisher: BillingOutboxPublisher = {
+      publish: vi.fn().mockResolvedValue(undefined),
+    }
 
-    await expect(new BillingOutboxDispatcher(store, publisher).dispatchOnce()).resolves.toEqual({
+    await expect(
+      new BillingOutboxDispatcher(store, publisher).dispatchOnce(),
+    ).resolves.toEqual({
       failed: 0,
       sent: 1,
     })
@@ -55,7 +61,9 @@ describe('BillingOutboxDispatcher', () => {
       publish: vi.fn().mockRejectedValue(new Error('SQS unavailable')),
     }
 
-    await expect(new BillingOutboxDispatcher(store, publisher).dispatchOnce()).resolves.toEqual({
+    await expect(
+      new BillingOutboxDispatcher(store, publisher).dispatchOnce(),
+    ).resolves.toEqual({
       failed: 1,
       sent: 0,
     })
@@ -65,7 +73,9 @@ describe('BillingOutboxDispatcher', () => {
 
   it('does not publish a row again after it has been marked sent', async () => {
     const store = new MemoryOutboxStore([claimed])
-    const publisher: BillingOutboxPublisher = { publish: vi.fn().mockResolvedValue(undefined) }
+    const publisher: BillingOutboxPublisher = {
+      publish: vi.fn().mockResolvedValue(undefined),
+    }
     const dispatcher = new BillingOutboxDispatcher(store, publisher)
 
     await dispatcher.dispatchOnce()

@@ -29,7 +29,11 @@ import { LocalBillingProvider } from './local-billing.provider'
 import { StripeBillingProvider } from './stripe-billing.provider'
 
 @Module({
-  controllers: [BillingController, BillingWebhookController, BillingWorkerController],
+  controllers: [
+    BillingController,
+    BillingWebhookController,
+    BillingWorkerController,
+  ],
   providers: [
     {
       provide: BILLING_STORE,
@@ -115,7 +119,9 @@ function stripePlans(config: ConfigService): BillingPlan[] {
       displayName: 'Starter Monthly',
       entitlementKeys: ['projects'],
       interval: 'month',
-      providerPriceId: config.getOrThrow<string>('STRIPE_PRICE_STARTER_MONTHLY'),
+      providerPriceId: config.getOrThrow<string>(
+        'STRIPE_PRICE_STARTER_MONTHLY',
+      ),
     },
     {
       code: 'pro-monthly',

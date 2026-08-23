@@ -31,10 +31,10 @@ export const RequireOrganizationPermissions = (
   permissions: string[],
   organizationParam = 'organizationId',
 ) =>
-  SetMetadata(
-    ORGANIZATION_PERMISSION_REQUIREMENT,
-    { organizationParam, permissions } satisfies OrganizationPermissionRequirement,
-  )
+  SetMetadata(ORGANIZATION_PERMISSION_REQUIREMENT, {
+    organizationParam,
+    permissions,
+  } satisfies OrganizationPermissionRequirement)
 
 export const RequireScopes = (...scopes: string[]) =>
   SetMetadata(AUTHORIZATION_REQUIREMENT, {

@@ -51,7 +51,10 @@ export class OrganizationPermissionService implements OrganizationPermissionEval
     userId: string,
     permissions: readonly string[],
   ): Promise<boolean> {
-    const membership = await this.memberships.getMembership(organizationId, userId)
+    const membership = await this.memberships.getMembership(
+      organizationId,
+      userId,
+    )
     if (!membership?.role) return false
     return permissions.every((permission) =>
       rolePermissions[membership.role]?.includes(permission),

@@ -8,7 +8,8 @@ export default [
         'error',
         {
           name: 'fetch',
-          message: 'Use @repo/api-client instead of calling backend fetch directly.',
+          message:
+            'Use @repo/api-client instead of calling backend fetch directly.',
         },
       ],
       'no-restricted-imports': [
@@ -17,13 +18,15 @@ export default [
           paths: [
             {
               name: 'axios',
-              message: 'Use @repo/api-client instead of axios for backend requests.',
+              message:
+                'Use @repo/api-client instead of axios for backend requests.',
             },
           ],
           patterns: [
             {
               group: ['axios/*'],
-              message: 'Use @repo/api-client instead of axios for backend requests.',
+              message:
+                'Use @repo/api-client instead of axios for backend requests.',
             },
           ],
         },

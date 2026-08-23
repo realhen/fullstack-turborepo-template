@@ -38,7 +38,9 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
     return result.rows[0] ? toAccount(result.rows[0]) : null
   }
 
-  async findAccountByCustomer(customerId: string): Promise<BillingAccount | null> {
+  async findAccountByCustomer(
+    customerId: string,
+  ): Promise<BillingAccount | null> {
     const result = await this.pool.query<AccountRow>(
       'SELECT * FROM billing_accounts WHERE provider_customer_id = $1',
       [customerId],
@@ -62,7 +64,8 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
       ],
     )
     const account = result.rows[0]
-    if (!account) throw new Error('Billing account insert did not return an account')
+    if (!account)
+      throw new Error('Billing account insert did not return an account')
     return toAccount(account)
   }
 
@@ -154,9 +157,10 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
     entitlements: EntitlementProjection[],
   ): Promise<void> {
     await this.withTransaction(async (client) => {
-      await client.query('DELETE FROM billing_entitlements WHERE billing_account_id = $1', [
-        billingAccountId,
-      ])
+      await client.query(
+        'DELETE FROM billing_entitlements WHERE billing_account_id = $1',
+        [billingAccountId],
+      )
       for (const entitlement of entitlements) {
         await client.query(
           `INSERT INTO billing_entitlements
@@ -197,7 +201,10 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
       await client.query(
         `INSERT INTO billing_outbox (id, topic, payload, available_at)
          VALUES ($1, 'billing.webhook', $2::jsonb, now())`,
-        [randomUUID(), JSON.stringify({ eventId: event.id, kind: 'billing.webhook' })],
+        [
+          randomUUID(),
+          JSON.stringify({ eventId: event.id, kind: 'billing.webhook' }),
+        ],
       )
       return true
     })
@@ -254,7 +261,9 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
   }
 
   async listAccounts(): Promise<BillingAccount[]> {
-    const result = await this.pool.query<AccountRow>('SELECT * FROM billing_accounts')
+    const result = await this.pool.query<AccountRow>(
+      'SELECT * FROM billing_accounts',
+    )
     return result.rows.map(toAccount)
   }
 
@@ -268,7 +277,10 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
 
   async take(): Promise<BillingOutboxMessage | null> {
     return this.withTransaction(async (client) => {
-      const result = await client.query<{ id: string; payload: BillingOutboxMessage }>(
+      const result = await client.query<{
+        id: string
+        payload: BillingOutboxMessage
+      }>(
         `SELECT id, payload FROM billing_outbox
          WHERE dispatched_at IS NULL AND available_at <= now()
          ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1`,
@@ -283,7 +295,9 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
     })
   }
 
-  private async withTransaction<T>(operation: (client: QueryClient) => Promise<T>): Promise<T> {
+  private async withTransaction<T>(
+    operation: (client: QueryClient) => Promise<T>,
+  ): Promise<T> {
     const client = await this.pool.connect()
     try {
       await client.query('BEGIN')
@@ -299,9 +313,7 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
   }
 }
 
-export class DatabaseBillingOrganizationMembershipStore
-  implements BillingOrganizationMembershipStore
-{
+export class DatabaseBillingOrganizationMembershipStore implements BillingOrganizationMembershipStore {
   constructor(private readonly pool: QueryPool) {}
 
   async getMembership(organizationId: string, userId: string) {
@@ -317,7 +329,9 @@ export class DatabaseBillingOrganizationMembershipStore
       [organizationId, userId],
     )
     const canManageBilling = result.rows[0]?.can_manage_billing ?? false
-    return canManageBilling ? { canManageBilling, organizationId, userId } : null
+    return canManageBilling
+      ? { canManageBilling, organizationId, userId }
+      : null
   }
 }
 
@@ -380,8 +394,9 @@ function toEvent(row: InboxRow): VerifiedBillingEvent {
   return {
     createdAt: new Date(row.provider_created_at),
     id: row.provider_event_id,
-    object: (row.payload.data as { object?: Record<string, unknown> } | undefined)
-      ?.object ?? {},
+    object:
+      (row.payload.data as { object?: Record<string, unknown> } | undefined)
+        ?.object ?? {},
     provider: row.provider,
     raw: row.raw_payload,
     type: row.event_type,
@@ -409,7 +424,9 @@ function toInvoice(row: InvoiceRow): InvoiceProjection {
     amountPaid: Number(row.amount_paid),
     billingAccountId: row.billing_account_id,
     currency: row.currency,
-    ...(row.hosted_invoice_url ? { hostedInvoiceUrl: row.hosted_invoice_url } : {}),
+    ...(row.hosted_invoice_url
+      ? { hostedInvoiceUrl: row.hosted_invoice_url }
+      : {}),
     ...(row.invoice_pdf ? { invoicePdf: row.invoice_pdf } : {}),
     providerInvoiceId: row.provider_invoice_id,
     ...(row.provider_subscription_id

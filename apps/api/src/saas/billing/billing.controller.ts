@@ -23,7 +23,9 @@ export class BillingController {
 
   @Get('plans')
   @RequireAuthenticated()
-  listPlans(@Param('organizationId', OrganizationIdPipe) _organizationId: string) {
+  listPlans(
+    @Param('organizationId', OrganizationIdPipe) _organizationId: string,
+  ) {
     return { plans: this.billing.listPlans() }
   }
 

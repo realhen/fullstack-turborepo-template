@@ -5,9 +5,7 @@ import type {
   OrganizationMembershipStore,
 } from './organization.types'
 
-export class DatabaseOrganizationMembershipStore
-  implements OrganizationMembershipStore
-{
+export class DatabaseOrganizationMembershipStore implements OrganizationMembershipStore {
   private readonly authorizationLookup: PreTenantAuthorizationLookup
 
   constructor(pool: Pool) {
@@ -26,7 +24,8 @@ export class DatabaseOrganizationMembershipStore
   }
 
   async listMemberships(userId: string): Promise<OrganizationMembership[]> {
-    const organizations = await this.authorizationLookup.listOrganizations(userId)
+    const organizations =
+      await this.authorizationLookup.listOrganizations(userId)
     return organizations.map((organization) => ({
       organization,
       role: organization.role,

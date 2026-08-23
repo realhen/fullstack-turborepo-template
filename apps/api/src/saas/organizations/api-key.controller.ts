@@ -8,7 +8,10 @@ import {
   UseGuards,
 } from '@nestjs/common'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
-import { CurrentPrincipal, RequireOrganizationPermissions } from '../auth/auth.decorators'
+import {
+  CurrentPrincipal,
+  RequireOrganizationPermissions,
+} from '../auth/auth.decorators'
 import type { Principal } from '../auth/principal'
 import { OrganizationPermissionGuard } from './organization-permission.guard'
 import { OrganizationIdPipe } from './organization-id.pipe'
@@ -43,7 +46,11 @@ export class ApiKeyController {
     @CurrentPrincipal() principal: Principal,
     @Body() input: CreateApiKeyDto,
   ) {
-    return this.apiKeys.create(organizationId, principal.userId ?? principal.id, input)
+    return this.apiKeys.create(
+      organizationId,
+      principal.userId ?? principal.id,
+      input,
+    )
   }
 
   @Delete('api-keys/:apiKeyId')
@@ -53,6 +60,10 @@ export class ApiKeyController {
     @Param('apiKeyId', new ParseUUIDPipe({ version: '4' })) apiKeyId: string,
     @CurrentPrincipal() principal: Principal,
   ) {
-    return this.apiKeys.revoke(organizationId, principal.userId ?? principal.id, apiKeyId)
+    return this.apiKeys.revoke(
+      organizationId,
+      principal.userId ?? principal.id,
+      apiKeyId,
+    )
   }
 }

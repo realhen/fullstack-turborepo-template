@@ -28,7 +28,9 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
   findAccountByOrganization(
     organizationId: string,
   ): Promise<BillingAccount | null> {
-    return Promise.resolve(this.accountsByOrganization.get(organizationId) ?? null)
+    return Promise.resolve(
+      this.accountsByOrganization.get(organizationId) ?? null,
+    )
   }
 
   findAccountByCustomer(customerId: string): Promise<BillingAccount | null> {
@@ -126,14 +128,18 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
   }
 }
 
-export class InMemoryBillingOrganizationMembershipStore
-  implements BillingOrganizationMembershipStore
-{
-  private readonly memberships = new Map<string, BillingOrganizationMembership>()
+export class InMemoryBillingOrganizationMembershipStore implements BillingOrganizationMembershipStore {
+  private readonly memberships = new Map<
+    string,
+    BillingOrganizationMembership
+  >()
 
   constructor(memberships: readonly BillingOrganizationMembership[] = []) {
     for (const membership of memberships) {
-      this.memberships.set(this.key(membership.organizationId, membership.userId), membership)
+      this.memberships.set(
+        this.key(membership.organizationId, membership.userId),
+        membership,
+      )
     }
   }
 
@@ -141,7 +147,9 @@ export class InMemoryBillingOrganizationMembershipStore
     organizationId: string,
     userId: string,
   ): Promise<BillingOrganizationMembership | null> {
-    return Promise.resolve(this.memberships.get(this.key(organizationId, userId)) ?? null)
+    return Promise.resolve(
+      this.memberships.get(this.key(organizationId, userId)) ?? null,
+    )
   }
 
   private key(organizationId: string, userId: string): string {

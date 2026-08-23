@@ -1,4 +1,7 @@
-import type { BillingOutboxMessage, BillingOutboxPublisher } from '@repo/billing'
+import type {
+  BillingOutboxMessage,
+  BillingOutboxPublisher,
+} from '@repo/billing'
 
 /** Local adapter for a development queue endpoint accepting a JSON POST. */
 export class LocalHttpBillingOutboxPublisher implements BillingOutboxPublisher {

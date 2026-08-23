@@ -78,4 +78,3 @@ function statusToCode(status: number): string {
   }
   return known[status] ?? (status >= 500 ? 'internal_error' : 'request_failed')
 }
-

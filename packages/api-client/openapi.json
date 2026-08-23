@@ -1,34 +1,487 @@
 {
   "openapi": "3.0.0",
-  "info": {
-    "title": "Application API",
-    "version": "1.0.0",
-    "description": "Snapshot generated from Nest Swagger JSON. Run pnpm --filter @repo/api-client generate after API contract changes."
-  },
   "paths": {
+    "/api/v1": {
+      "get": {
+        "operationId": "App_getWelcome",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "example": {
+                    "message": "Your NestJS API is ready."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "summary": "Confirm that the API is running",
+        "tags": ["app"]
+      }
+    },
     "/api/v1/health": {
-      "get": { "operationId": "getHealth", "responses": { "200": { "description": "Service health", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Health" } } } } } }
+      "get": {
+        "operationId": "Health_getHealth",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Health"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Liveness check for containers and load balancers",
+        "tags": ["health"]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/service-accounts": {
+      "post": {
+        "operationId": "ApiKey_createServiceAccount",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["api-keys"]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/api-keys": {
+      "post": {
+        "operationId": "ApiKey_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["api-keys"]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/api-keys/{apiKeyId}": {
+      "delete": {
+        "operationId": "ApiKey_revoke",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["api-keys"]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/audit-events": {
+      "get": {
+        "operationId": "AuditRead_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["audit"]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/invitations": {
+      "post": {
+        "operationId": "Invitation_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["invitations"]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/invitations/{invitationId}": {
+      "delete": {
+        "operationId": "Invitation_revoke",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["invitations"]
+      }
+    },
+    "/api/v1/invitations/accept": {
+      "post": {
+        "operationId": "Invitation_accept",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["invitations"]
+      }
     },
     "/api/v1/me": {
-      "get": { "operationId": "getMe", "security": [{ "bearer": [] }], "responses": { "200": { "description": "Current principal", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/Principal" } } } }, "401": { "description": "Unauthenticated" } } }
+      "get": {
+        "operationId": "Me_getMe",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Principal"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["identity"]
+      }
+    },
+    "/api/v1/organizations": {
+      "post": {
+        "operationId": "OrganizationManagement_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["organizations"]
+      },
+      "get": {
+        "operationId": "Organizations_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["organizations"]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/projects": {
+      "get": {
+        "operationId": "ProjectManagement_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["projects"]
+      },
+      "post": {
+        "operationId": "ProjectManagement_create",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["projects"]
+      }
     },
     "/api/v1/projects/{projectId}": {
-      "get": { "operationId": "getProject", "security": [{ "bearer": [] }], "parameters": [{ "$ref": "#/components/parameters/ProjectId" }], "responses": { "200": { "description": "Project membership", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProjectMembership" } } } } } }
+      "get": {
+        "operationId": "Projects_getProject",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectMembership"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["projects"]
+      }
     },
     "/api/v1/projects/{projectId}/members": {
-      "get": { "operationId": "listProjectMembers", "security": [{ "bearer": [] }], "parameters": [{ "$ref": "#/components/parameters/ProjectId" }], "responses": { "200": { "description": "Project members", "content": { "application/json": { "schema": { "type": "array", "items": { "$ref": "#/components/schemas/ProjectMembership" } } } } } } },
-      "post": { "operationId": "addProjectMember", "security": [{ "bearer": [] }], "parameters": [{ "$ref": "#/components/parameters/ProjectId" }], "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AddProjectMember" } } } }, "responses": { "201": { "description": "Member added", "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ProjectMembership" } } } } } }
+      "get": {
+        "operationId": "Projects_listMembers",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectMembership"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["projects"]
+      },
+      "post": {
+        "operationId": "Projects_addMember",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectMembership"
+                }
+              }
+            }
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["projects"]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/billing": {
+      "get": {
+        "operationId": "Billing_getSummary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["billing"]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/billing/plans": {
+      "get": {
+        "operationId": "Billing_listPlans",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["billing"]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/billing/checkout": {
+      "post": {
+        "operationId": "Billing_createCheckout",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["billing"]
+      }
+    },
+    "/api/v1/organizations/{organizationId}/billing/portal": {
+      "post": {
+        "operationId": "Billing_createPortal",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": ""
+          }
+        },
+        "security": [
+          {
+            "bearer": []
+          }
+        ],
+        "tags": ["billing"]
+      }
     }
   },
+  "info": {
+    "title": "SaaS Application API",
+    "description": "Versioned contract used to generate every frontend-to-backend request.",
+    "version": "1.0",
+    "contact": {}
+  },
+  "tags": [],
+  "servers": [],
   "components": {
-    "securitySchemes": { "bearer": { "type": "http", "scheme": "bearer" } },
-    "parameters": { "ProjectId": { "name": "projectId", "in": "path", "required": true, "schema": { "type": "string" } } },
+    "securitySchemes": {
+      "bearer": {
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "type": "http"
+      }
+    },
     "schemas": {
-      "Health": { "type": "object", "required": ["service", "status"], "properties": { "service": { "type": "string", "enum": ["api"] }, "status": { "type": "string", "enum": ["ok"] } } },
-      "Principal": { "type": "object", "required": ["id", "provider", "scopes"], "properties": { "id": { "type": "string" }, "email": { "type": "string", "format": "email" }, "provider": { "type": "string" }, "scopes": { "type": "array", "items": { "type": "string" } } } },
-      "Project": { "type": "object", "required": ["id", "name"], "properties": { "id": { "type": "string" }, "name": { "type": "string" } } },
-      "ProjectMembership": { "type": "object", "required": ["project", "role", "userId"], "properties": { "project": { "$ref": "#/components/schemas/Project" }, "role": { "type": "string", "enum": ["owner", "admin", "member", "viewer"] }, "userId": { "type": "string" } } },
-      "AddProjectMember": { "type": "object", "required": ["userId", "role"], "properties": { "userId": { "type": "string" }, "role": { "type": "string", "enum": ["owner", "admin", "member", "viewer"] } } }
+      "Health": {
+        "type": "object",
+        "properties": {
+          "service": {
+            "type": "string",
+            "enum": ["api"]
+          },
+          "status": {
+            "type": "string",
+            "enum": ["ok"]
+          }
+        },
+        "required": ["service", "status"]
+      },
+      "Principal": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "format": "email"
+          },
+          "emailVerified": {
+            "type": "boolean"
+          },
+          "provider": {
+            "type": "string"
+          },
+          "scopes": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "userId": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "provider", "scopes"]
+      },
+      "Project": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "organizationId": {
+            "type": "string"
+          }
+        },
+        "required": ["id", "name"]
+      },
+      "ProjectMembership": {
+        "type": "object",
+        "properties": {
+          "project": {
+            "$ref": "#/components/schemas/Project"
+          },
+          "role": {
+            "type": "string",
+            "enum": ["owner", "admin", "member", "viewer"]
+          },
+          "userId": {
+            "type": "string"
+          }
+        },
+        "required": ["project", "role", "userId"]
+      }
     }
   }
 }

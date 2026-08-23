@@ -34,7 +34,9 @@ describe('AuditReadService', () => {
       ]),
     )
 
-    await expect(service.list('org-a', 'user-a', { limit: 1 })).resolves.toMatchObject({
+    await expect(
+      service.list('org-a', 'user-a', { limit: 1 }),
+    ).resolves.toMatchObject({
       items: [expect.objectContaining({ action: 'a' })],
     })
   })

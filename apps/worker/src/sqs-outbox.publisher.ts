@@ -1,4 +1,7 @@
-import type { BillingOutboxMessage, BillingOutboxPublisher } from '@repo/billing'
+import type {
+  BillingOutboxMessage,
+  BillingOutboxPublisher,
+} from '@repo/billing'
 
 export interface SqsPublisherTransport {
   send(input: { body: string; queueUrl: string }): Promise<void>
@@ -12,7 +15,10 @@ export class SqsBillingOutboxPublisher implements BillingOutboxPublisher {
   ) {}
 
   publish(message: BillingOutboxMessage): Promise<void> {
-    return this.transport.send({ body: JSON.stringify(message), queueUrl: this.queueUrl })
+    return this.transport.send({
+      body: JSON.stringify(message),
+      queueUrl: this.queueUrl,
+    })
   }
 }
 
@@ -30,7 +36,10 @@ export async function createAwsSqsPublisherTransport(
   return {
     async send(input) {
       await client.send(
-        new sdk.SendMessageCommand({ MessageBody: input.body, QueueUrl: input.queueUrl }),
+        new sdk.SendMessageCommand({
+          MessageBody: input.body,
+          QueueUrl: input.queueUrl,
+        }),
       )
     },
   }

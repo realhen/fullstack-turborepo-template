@@ -11,7 +11,10 @@ import {
   createAwsSqsPublisherTransport,
   SqsBillingOutboxPublisher,
 } from './sqs-outbox.publisher.js'
-import { createAwsSqsTransport, SqsQueueConsumer } from './sqs-queue.consumer.js'
+import {
+  createAwsSqsTransport,
+  SqsQueueConsumer,
+} from './sqs-queue.consumer.js'
 
 type HttpMessage = BillingQueueMessage & { receipt: string }
 
@@ -37,7 +40,8 @@ class LocalHttpQueue {
     const response = await fetch(`${this.queueUrl}/${receipt}/ack`, {
       method: 'POST',
     })
-    if (!response.ok) throw new Error(`Queue acknowledgement failed: ${response.status}`)
+    if (!response.ok)
+      throw new Error(`Queue acknowledgement failed: ${response.status}`)
   }
 }
 
@@ -64,7 +68,8 @@ class HttpBillingProcessor implements BillingEventProcessor {
       },
       method: 'POST',
     })
-    if (!response.ok) throw new Error(`Billing processor failed: ${response.status}`)
+    if (!response.ok)
+      throw new Error(`Billing processor failed: ${response.status}`)
   }
 }
 
@@ -106,12 +111,16 @@ async function run(): Promise<void> {
 
   const queueUrl = process.env.BILLING_LOCAL_QUEUE_URL
   if (!queueUrl) {
-    throw new Error('BILLING_LOCAL_QUEUE_URL is required for the local worker adapter')
+    throw new Error(
+      'BILLING_LOCAL_QUEUE_URL is required for the local worker adapter',
+    )
   }
   const queue = new LocalHttpQueue(queueUrl)
   const dispatcher = databaseUrl
     ? new BillingOutboxDispatcher(
-        new PostgresBillingOutboxStore(createDatabase(databaseUrl).pool as never),
+        new PostgresBillingOutboxStore(
+          createDatabase(databaseUrl).pool as never,
+        ),
         new LocalHttpBillingOutboxPublisher(queueUrl),
       )
     : null
@@ -134,7 +143,8 @@ function isHttpMessage(value: unknown): value is HttpMessage {
     return false
   }
   return (
-    (message.kind === 'billing.webhook' && typeof message.eventId === 'string') ||
+    (message.kind === 'billing.webhook' &&
+      typeof message.eventId === 'string') ||
     (message.kind === 'billing.reconcile' &&
       typeof message.customerId === 'string')
   )

@@ -111,7 +111,9 @@ export type ProviderSubscription = {
 }
 
 export interface BillingRepository {
-  findAccountByOrganization(organizationId: string): Promise<BillingAccount | null>
+  findAccountByOrganization(
+    organizationId: string,
+  ): Promise<BillingAccount | null>
   findAccountByCustomer(customerId: string): Promise<BillingAccount | null>
   createAccount(input: BillingAccount): Promise<BillingAccount>
   getSummaryForOrganization(organizationId: string): Promise<BillingSummary>

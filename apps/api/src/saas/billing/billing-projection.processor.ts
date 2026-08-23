@@ -24,14 +24,18 @@ export class BillingProjectionProcessor {
         await this.projectSubscriptionEvent(event.object, event.createdAt)
       } else if (event.type.startsWith('invoice.')) {
         await this.projectInvoiceEvent(event.object, event.createdAt)
-      } else if (event.type === 'entitlements.active_entitlement_summary.updated') {
+      } else if (
+        event.type === 'entitlements.active_entitlement_summary.updated'
+      ) {
         await this.projectEntitlementEvent(event.object, event.createdAt)
       }
       await this.repository.markEventProcessed(eventId)
     } catch (error) {
       await this.repository.markEventFailed(
         eventId,
-        error instanceof Error ? error.message : 'Unknown billing projection error',
+        error instanceof Error
+          ? error.message
+          : 'Unknown billing projection error',
       )
       throw error
     }
@@ -57,9 +61,14 @@ export class BillingProjectionProcessor {
     if (!account) return
     // Stripe events are unordered. Retrieve the present provider state instead
     // of trusting this possibly stale snapshot.
-    const subscription = await this.provider.retrieveSubscription(subscriptionId)
+    const subscription =
+      await this.provider.retrieveSubscription(subscriptionId)
     if (subscription) {
-      await this.projectSubscription(account, subscription, providerEventCreatedAt)
+      await this.projectSubscription(
+        account,
+        subscription,
+        providerEventCreatedAt,
+      )
     }
   }
 
@@ -160,12 +169,18 @@ function parseEntitlementKeys(metadata: Record<string, string>): string[] {
     .filter(Boolean)
 }
 
-function stringAt(object: Record<string, unknown>, key: string): string | undefined {
+function stringAt(
+  object: Record<string, unknown>,
+  key: string,
+): string | undefined {
   const value = object[key]
   return typeof value === 'string' ? value : undefined
 }
 
-function numberAt(object: Record<string, unknown>, key: string): number | undefined {
+function numberAt(
+  object: Record<string, unknown>,
+  key: string,
+): number | undefined {
   const value = object[key]
   return typeof value === 'number' ? value : undefined
 }

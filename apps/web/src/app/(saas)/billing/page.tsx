@@ -4,9 +4,8 @@ import { selectionFromSearchParams, type SearchParams } from '@/lib/page-params'
 export default async function BillingPage({
   searchParams,
 }: Readonly<{ searchParams: SearchParams }>) {
-  const selection = await selectionFromSearchParams(searchParams).then(
-    getSelectedWorkspace,
-  )
+  const selection =
+    await selectionFromSearchParams(searchParams).then(getSelectedWorkspace)
   const billing = selection.organization
     ? await getBillingPlans(selection.organization.id)
     : {
@@ -35,9 +34,7 @@ export default async function BillingPage({
             <p className="mt-2 text-sm text-zinc-400">
               Billed {plan.interval}ly
             </p>
-            <p className="mt-4 font-mono text-xs text-zinc-500">
-              {plan.code}
-            </p>
+            <p className="mt-4 font-mono text-xs text-zinc-500">{plan.code}</p>
           </article>
         ))}
       </div>

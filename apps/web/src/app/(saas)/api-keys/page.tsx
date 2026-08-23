@@ -4,9 +4,8 @@ import { selectionFromSearchParams, type SearchParams } from '@/lib/page-params'
 export default async function ApiKeysPage({
   searchParams,
 }: Readonly<{ searchParams: SearchParams }>) {
-  const selection = await selectionFromSearchParams(searchParams).then(
-    getSelectedWorkspace,
-  )
+  const selection =
+    await selectionFromSearchParams(searchParams).then(getSelectedWorkspace)
   return (
     <section>
       <h1 className="text-3xl font-semibold tracking-tight">API keys</h1>

@@ -27,9 +27,17 @@ export interface ApiKeyStore {
     actorId: string,
     input: { name: string; projectId?: string },
   ): Promise<{ id: string; name: string }>
-  markUsed(organizationId: string, apiKeyId: string, serviceAccountId: string): Promise<void>
+  markUsed(
+    organizationId: string,
+    apiKeyId: string,
+    serviceAccountId: string,
+  ): Promise<void>
   resolve(prefix: string): Promise<ApiKeyRecord | null>
-  revoke(organizationId: string, actorId: string, apiKeyId: string): Promise<boolean>
+  revoke(
+    organizationId: string,
+    actorId: string,
+    apiKeyId: string,
+  ): Promise<boolean>
 }
 
 export const API_KEY_STORE = Symbol('API_KEY_STORE')

@@ -1,6 +1,9 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
-import { CurrentPrincipal, RequireOrganizationPermissions } from '../auth/auth.decorators'
+import {
+  CurrentPrincipal,
+  RequireOrganizationPermissions,
+} from '../auth/auth.decorators'
 import type { Principal } from '../auth/principal'
 import { OrganizationPermissionGuard } from '../organizations/organization-permission.guard'
 import { OrganizationIdPipe } from '../organizations/organization-id.pipe'
@@ -30,6 +33,10 @@ export class ProjectManagementController {
     @CurrentPrincipal() principal: Principal,
     @Body() input: CreateProjectDto,
   ) {
-    return this.projects.create(organizationId, principal.userId ?? principal.id, input)
+    return this.projects.create(
+      organizationId,
+      principal.userId ?? principal.id,
+      input,
+    )
   }
 }

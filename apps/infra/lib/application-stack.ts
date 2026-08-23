@@ -65,14 +65,14 @@ export class ApplicationStack extends cdk.Stack {
 
     const authConfigured = Boolean(
       props.authIssuer &&
-        props.authJwksUri &&
-        (props.authAudience || props.authClientId),
+      props.authJwksUri &&
+      (props.authAudience || props.authClientId),
     )
     const hasPartialAuthConfiguration = Boolean(
       props.authIssuer ||
-        props.authJwksUri ||
-        props.authAudience ||
-        props.authClientId,
+      props.authJwksUri ||
+      props.authAudience ||
+      props.authClientId,
     )
     if (hasPartialAuthConfiguration && !authConfigured) {
       throw new Error(
@@ -213,10 +213,7 @@ export class ApplicationStack extends cdk.Stack {
       }),
       secrets: {
         DATABASE_SECRET: ecs.Secret.fromSecretsManager(database.secret!),
-        WORKER_SECRET: ecs.Secret.fromSecretsManager(
-          workerSecret,
-          'secret',
-        ),
+        WORKER_SECRET: ecs.Secret.fromSecretsManager(workerSecret, 'secret'),
         DB_PASSWORD: ecs.Secret.fromSecretsManager(
           database.secret!,
           'password',
@@ -325,10 +322,7 @@ export class ApplicationStack extends cdk.Stack {
       }),
       secrets: {
         DATABASE_SECRET: ecs.Secret.fromSecretsManager(database.secret!),
-        WORKER_SECRET: ecs.Secret.fromSecretsManager(
-          workerSecret,
-          'secret',
-        ),
+        WORKER_SECRET: ecs.Secret.fromSecretsManager(workerSecret, 'secret'),
         DB_PASSWORD: ecs.Secret.fromSecretsManager(
           database.secret!,
           'password',
@@ -524,7 +518,8 @@ export class ApplicationStack extends cdk.Stack {
         treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
       }),
       new cloudwatch.Alarm(this, 'DeadLetterQueueAlarm', {
-        alarmDescription: 'At least one asynchronous job requires intervention.',
+        alarmDescription:
+          'At least one asynchronous job requires intervention.',
         evaluationPeriods: 1,
         metric: deadLetterQueue.metricApproximateNumberOfMessagesVisible({
           period: cdk.Duration.minutes(1),

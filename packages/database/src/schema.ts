@@ -143,10 +143,14 @@ export const roles = pgTable(
   (table) => [
     uniqueIndex('roles_global_key_unique')
       .on(table.key)
-      .where(sql`${table.organizationId} IS NULL AND ${table.projectId} IS NULL`),
+      .where(
+        sql`${table.organizationId} IS NULL AND ${table.projectId} IS NULL`,
+      ),
     uniqueIndex('roles_organization_key_unique')
       .on(table.organizationId, table.key)
-      .where(sql`${table.organizationId} IS NOT NULL AND ${table.projectId} IS NULL`),
+      .where(
+        sql`${table.organizationId} IS NOT NULL AND ${table.projectId} IS NULL`,
+      ),
     uniqueIndex('roles_project_key_unique')
       .on(table.projectId, table.key)
       .where(sql`${table.projectId} IS NOT NULL`),
@@ -182,7 +186,9 @@ export const organizationMemberships = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    roleId: uuid('role_id').references(() => roles.id, { onDelete: 'restrict' }),
+    roleId: uuid('role_id').references(() => roles.id, {
+      onDelete: 'restrict',
+    }),
     status: text('status').notNull().default('active'),
     ...timestamps(),
   },
@@ -208,7 +214,9 @@ export const projectMemberships = pgTable(
     userId: uuid('user_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
-    roleId: uuid('role_id').references(() => roles.id, { onDelete: 'restrict' }),
+    roleId: uuid('role_id').references(() => roles.id, {
+      onDelete: 'restrict',
+    }),
     status: text('status').notNull().default('active'),
     ...timestamps(),
   },
@@ -235,7 +243,9 @@ export const invitations = pgTable(
       onDelete: 'cascade',
     }),
     email: text('email').notNull(),
-    roleId: uuid('role_id').references(() => roles.id, { onDelete: 'restrict' }),
+    roleId: uuid('role_id').references(() => roles.id, {
+      onDelete: 'restrict',
+    }),
     tokenHash: text('token_hash').notNull(),
     invitedByUserId: uuid('invited_by_user_id')
       .notNull()
@@ -285,7 +295,9 @@ export const serviceAccounts = pgTable(
     status: text('status').notNull().default('active'),
     ...timestamps(),
   },
-  (table) => [index('service_accounts_organization_idx').on(table.organizationId)],
+  (table) => [
+    index('service_accounts_organization_idx').on(table.organizationId),
+  ],
 )
 
 export const apiKeys = pgTable(
@@ -323,7 +335,10 @@ export const auditEvents = pgTable(
     resourceId: text('resource_id'),
     requestId: text('request_id'),
     ipHash: text('ip_hash'),
-    metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
+    metadata: jsonb('metadata')
+      .$type<Record<string, unknown>>()
+      .notNull()
+      .default({}),
     occurredAt: timestamp('occurred_at', { withTimezone: true })
       .defaultNow()
       .notNull(),

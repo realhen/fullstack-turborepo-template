@@ -10,8 +10,11 @@ export class DatabaseAuditReadStore implements AuditReadStore {
     actorId: string,
     input: { cursor?: { id: string; occurredAt: Date }; limit: number },
   ) {
-    return withTenantRepository(this.pool, { actorId, organizationId }, (repository) =>
-      repository.listAuditEvents({ actorId, organizationId }, input),
+    return withTenantRepository(
+      this.pool,
+      { actorId, organizationId },
+      (repository) =>
+        repository.listAuditEvents({ actorId, organizationId }, input),
     )
   }
 }

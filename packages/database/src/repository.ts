@@ -75,7 +75,8 @@ export class SaasRepository {
         name: organizations.name,
         slug: organizations.slug,
       })
-    if (!organization) throw new Error('Organization creation did not return an organization')
+    if (!organization)
+      throw new Error('Organization creation did not return an organization')
 
     const definitions = [
       {
@@ -112,7 +113,11 @@ export class SaasRepository {
         name: 'Member',
         permissions: ['organizations:read', 'projects:read', 'projects:write'],
       },
-      { key: 'viewer', name: 'Viewer', permissions: ['organizations:read', 'projects:read'] },
+      {
+        key: 'viewer',
+        name: 'Viewer',
+        permissions: ['organizations:read', 'projects:read'],
+      },
     ] as const
     const createdRoles = await this.db
       .insert(roles)
@@ -128,7 +133,12 @@ export class SaasRepository {
     const permissionRows = await this.db
       .select({ id: permissions.id, key: permissions.key })
       .from(permissions)
-      .where(inArray(permissions.key, definitions.flatMap((role) => role.permissions)))
+      .where(
+        inArray(
+          permissions.key,
+          definitions.flatMap((role) => role.permissions),
+        ),
+      )
     const permissionIds = new Map(
       permissionRows.map((permission) => [permission.key, permission.id]),
     )
@@ -138,7 +148,8 @@ export class SaasRepository {
       if (!roleId) throw new Error(`Missing default role ${role.key}`)
       return role.permissions.map((permission) => {
         const permissionId = permissionIds.get(permission)
-        if (!permissionId) throw new Error(`Missing seeded permission ${permission}`)
+        if (!permissionId)
+          throw new Error(`Missing seeded permission ${permission}`)
         return { permissionId, roleId }
       })
     })
@@ -162,7 +173,9 @@ export class SaasRepository {
     return organization
   }
 
-  listProjects(context: TenantContext): Promise<{ id: string; name: string; slug: string }[]> {
+  listProjects(
+    context: TenantContext,
+  ): Promise<{ id: string; name: string; slug: string }[]> {
     assertTenantContext(context)
     return this.db
       .select({ id: projects.id, name: projects.name, slug: projects.slug })
@@ -215,7 +228,8 @@ export class SaasRepository {
           .limit(1)
       : []
     const roleId = role[0]?.id
-    if (input.roleId && !roleId) throw new Error('Invitation role was not found')
+    if (input.roleId && !roleId)
+      throw new Error('Invitation role was not found')
 
     let membershipRoleId = roleId
     if (!membershipRoleId) {
@@ -231,7 +245,8 @@ export class SaasRepository {
         .limit(1)
       membershipRoleId = defaultRole?.id
     }
-    if (!membershipRoleId) throw new Error('Organization member role was not configured')
+    if (!membershipRoleId)
+      throw new Error('Organization member role was not configured')
 
     const [invitation] = await this.db
       .insert(invitations)
@@ -259,7 +274,10 @@ export class SaasRepository {
     return invitation
   }
 
-  async revokeInvitation(context: TenantContext, invitationId: string): Promise<boolean> {
+  async revokeInvitation(
+    context: TenantContext,
+    invitationId: string,
+  ): Promise<boolean> {
     assertTenantContext(context)
     const revoked = await this.db
       .update(invitations)
@@ -358,7 +376,8 @@ export class SaasRepository {
         ...(input.projectId ? { projectId: input.projectId } : {}),
       })
       .returning({ id: serviceAccounts.id, name: serviceAccounts.name })
-    if (!account) throw new Error('Service account creation did not return an account')
+    if (!account)
+      throw new Error('Service account creation did not return an account')
     await this.appendAuditEvent(context, {
       action: 'service_account.created',
       actorType: 'user',
@@ -412,7 +431,10 @@ export class SaasRepository {
     return key
   }
 
-  async revokeApiKey(context: TenantContext, apiKeyId: string): Promise<boolean> {
+  async revokeApiKey(
+    context: TenantContext,
+    apiKeyId: string,
+  ): Promise<boolean> {
     assertTenantContext(context)
     const revoked = await this.db
       .update(apiKeys)
@@ -436,7 +458,10 @@ export class SaasRepository {
     return true
   }
 
-  async markApiKeyUsed(context: TenantContext, apiKeyId: string): Promise<void> {
+  async markApiKeyUsed(
+    context: TenantContext,
+    apiKeyId: string,
+  ): Promise<void> {
     assertTenantContext(context)
     await this.db
       .update(apiKeys)
@@ -556,7 +581,8 @@ export class SaasRepository {
         ),
       )
       .limit(1)
-    if (!role) throw new Error('Project role was not configured for organization')
+    if (!role)
+      throw new Error('Project role was not configured for organization')
 
     await this.db
       .insert(projectMemberships)
@@ -618,7 +644,10 @@ export class SaasRepository {
           )
           .where(
             and(
-              eq(organizationMemberships.organizationId, context.organizationId),
+              eq(
+                organizationMemberships.organizationId,
+                context.organizationId,
+              ),
               eq(organizationMemberships.userId, context.actorId),
               eq(organizationMemberships.status, 'active'),
               eq(permissions.key, permission),

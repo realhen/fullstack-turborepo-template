@@ -5,7 +5,9 @@ import type { AuditEventInput, AuditStore } from './audit.types'
 describe('AuditService', () => {
   it('redacts credentials before persistence', async () => {
     const events: AuditEventInput[] = []
-    const store: AuditStore = { append: async (event) => void events.push(event) }
+    const store: AuditStore = {
+      append: async (event) => void events.push(event),
+    }
     const service = new AuditService(store)
 
     await service.append({

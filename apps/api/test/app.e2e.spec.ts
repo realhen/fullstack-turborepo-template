@@ -13,8 +13,7 @@ describe('API', () => {
       'test-token-that-is-long-enough-for-validation'
     process.env.AUTH_LOCAL_SUBJECT = 'test-user'
     process.env.AUTH_LOCAL_SCOPES = 'profile:read'
-    process.env.AUTH_LOCAL_PROJECT_ID =
-      '00000000-0000-4000-8000-000000000012'
+    process.env.AUTH_LOCAL_PROJECT_ID = '00000000-0000-4000-8000-000000000012'
     process.env.AUTH_LOCAL_PROJECT_NAME = 'Test project'
     const { createApp } = await import('../src/bootstrap.js')
     app = await createApp()
@@ -125,18 +124,14 @@ describe('API', () => {
     })
 
     await request(server)
-      .post(
-        '/api/v1/projects/00000000-0000-4000-8000-000000000012/members',
-      )
+      .post('/api/v1/projects/00000000-0000-4000-8000-000000000012/members')
       .set('Authorization', authorization)
       .set('X-Forwarded-For', '203.0.113.43')
       .send({ userId: 'another-user', role: 'viewer' })
       .expect(201)
 
     const members = await request(server)
-      .get(
-        '/api/v1/projects/00000000-0000-4000-8000-000000000012/members',
-      )
+      .get('/api/v1/projects/00000000-0000-4000-8000-000000000012/members')
       .set('Authorization', authorization)
       .set('X-Forwarded-For', '203.0.113.43')
       .expect(200)

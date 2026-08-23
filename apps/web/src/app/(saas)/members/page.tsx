@@ -4,14 +4,14 @@ import { selectionFromSearchParams, type SearchParams } from '@/lib/page-params'
 export default async function MembersPage({
   searchParams,
 }: Readonly<{ searchParams: SearchParams }>) {
-  const selection = await selectionFromSearchParams(searchParams).then(
-    getSelectedWorkspace,
-  )
+  const selection =
+    await selectionFromSearchParams(searchParams).then(getSelectedWorkspace)
   const members = selection.project
     ? await getProjectMembers(selection.project.id)
     : {
         members: [],
-        error: selection.workspace.error ?? 'Choose a project to view its members.',
+        error:
+          selection.workspace.error ?? 'Choose a project to view its members.',
       }
   return (
     <section>
@@ -35,7 +35,9 @@ export default async function MembersPage({
             {members.members.map((member) => (
               <tr className="border-t border-zinc-800" key={member.userId}>
                 <td className="px-4 py-3">{member.userId}</td>
-                <td className="px-4 py-3 capitalize text-zinc-300">{member.role}</td>
+                <td className="px-4 py-3 capitalize text-zinc-300">
+                  {member.role}
+                </td>
               </tr>
             ))}
           </tbody>

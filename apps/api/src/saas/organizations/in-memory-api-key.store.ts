@@ -18,7 +18,12 @@ export class InMemoryApiKeyStore implements ApiKeyStore {
     _actorId: string,
     input: { name: string; projectId?: string },
   ): Promise<{ id: string; name: string }> {
-    const account = { ...input, id: randomUUID(), organizationId, status: 'active' }
+    const account = {
+      ...input,
+      id: randomUUID(),
+      organizationId,
+      status: 'active',
+    }
     this.accounts.set(account.id, account)
     return { id: account.id, name: account.name }
   }
@@ -38,7 +43,11 @@ export class InMemoryApiKeyStore implements ApiKeyStore {
       throw Object.assign(new Error('Duplicate API key'), { code: '23505' })
     }
     const account = this.accounts.get(input.serviceAccountId)
-    if (!account || account.organizationId !== organizationId || account.status !== 'active') {
+    if (
+      !account ||
+      account.organizationId !== organizationId ||
+      account.status !== 'active'
+    ) {
       throw new Error('Active service account was not found')
     }
     const id = randomUUID()
@@ -66,9 +75,16 @@ export class InMemoryApiKeyStore implements ApiKeyStore {
     _serviceAccountId: string,
   ): Promise<void> {}
 
-  async revoke(organizationId: string, _actorId: string, apiKeyId: string): Promise<boolean> {
-    const key = [...this.keys.values()].find((candidate) => candidate.apiKeyId === apiKeyId)
-    if (!key || key.organizationId !== organizationId || key.revokedAt) return false
+  async revoke(
+    organizationId: string,
+    _actorId: string,
+    apiKeyId: string,
+  ): Promise<boolean> {
+    const key = [...this.keys.values()].find(
+      (candidate) => candidate.apiKeyId === apiKeyId,
+    )
+    if (!key || key.organizationId !== organizationId || key.revokedAt)
+      return false
     key.revokedAt = new Date()
     return true
   }

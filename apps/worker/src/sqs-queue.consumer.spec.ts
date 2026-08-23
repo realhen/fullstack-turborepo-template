@@ -7,11 +7,17 @@ describe('SqsQueueConsumer', () => {
       delete: vi.fn().mockResolvedValue(undefined),
       receive: vi.fn().mockResolvedValue([
         {
-          body: JSON.stringify({ eventId: 'evt_success', kind: 'billing.webhook' }),
+          body: JSON.stringify({
+            eventId: 'evt_success',
+            kind: 'billing.webhook',
+          }),
           receiptHandle: 'receipt_success',
         },
         {
-          body: JSON.stringify({ eventId: 'evt_retry', kind: 'billing.webhook' }),
+          body: JSON.stringify({
+            eventId: 'evt_retry',
+            kind: 'billing.webhook',
+          }),
           receiptHandle: 'receipt_retry',
         },
       ]),

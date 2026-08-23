@@ -91,7 +91,9 @@ export class PostgresBillingOutboxStore implements BillingOutboxStore {
     )
   }
 
-  private async withTransaction<T>(operation: (client: QueryClient) => Promise<T>): Promise<T> {
+  private async withTransaction<T>(
+    operation: (client: QueryClient) => Promise<T>,
+  ): Promise<T> {
     const client = await this.pool.connect()
     try {
       await client.query('BEGIN')
@@ -116,7 +118,10 @@ function parseOutboxMessage(value: unknown): BillingOutboxMessage | null {
         : null
   if (!message || typeof message !== 'object') return null
   const payload = message as Record<string, unknown>
-  if (payload.kind === 'billing.webhook' && typeof payload.eventId === 'string') {
+  if (
+    payload.kind === 'billing.webhook' &&
+    typeof payload.eventId === 'string'
+  ) {
     return { eventId: payload.eventId, kind: payload.kind }
   }
   if (

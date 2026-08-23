@@ -1,5 +1,8 @@
 import { randomUUID } from 'node:crypto'
-import type { ProjectManagementStore, ProjectSummary } from './project-management.types'
+import type {
+  ProjectManagementStore,
+  ProjectSummary,
+} from './project-management.types'
 
 export class InMemoryProjectManagementStore implements ProjectManagementStore {
   private readonly projects = new Map<
@@ -15,7 +18,8 @@ export class InMemoryProjectManagementStore implements ProjectManagementStore {
     if (
       [...this.projects.values()].some(
         (project) =>
-          project.organizationId === organizationId && project.slug === input.slug,
+          project.organizationId === organizationId &&
+          project.slug === input.slug,
       )
     ) {
       throw new Error('Project slug already exists in organization')

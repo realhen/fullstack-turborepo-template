@@ -1,4 +1,7 @@
-import { PreTenantAuthorizationLookup, withTenantRepository } from '@repo/database'
+import {
+  PreTenantAuthorizationLookup,
+  withTenantRepository,
+} from '@repo/database'
 import type { Pool } from 'pg'
 import type { ApiKeyStore } from './api-key.types'
 
@@ -14,8 +17,11 @@ export class DatabaseApiKeyStore implements ApiKeyStore {
     actorId: string,
     input: { name: string; projectId?: string },
   ) {
-    return withTenantRepository(this.pool, { actorId, organizationId }, (repository) =>
-      repository.createServiceAccount({ actorId, organizationId }, input),
+    return withTenantRepository(
+      this.pool,
+      { actorId, organizationId },
+      (repository) =>
+        repository.createServiceAccount({ actorId, organizationId }, input),
     )
   }
 
@@ -30,8 +36,11 @@ export class DatabaseApiKeyStore implements ApiKeyStore {
       serviceAccountId: string
     },
   ) {
-    return withTenantRepository(this.pool, { actorId, organizationId }, (repository) =>
-      repository.createApiKey({ actorId, organizationId }, input),
+    return withTenantRepository(
+      this.pool,
+      { actorId, organizationId },
+      (repository) =>
+        repository.createApiKey({ actorId, organizationId }, input),
     )
   }
 
@@ -39,7 +48,11 @@ export class DatabaseApiKeyStore implements ApiKeyStore {
     return this.lookup.resolveApiKey(prefix)
   }
 
-  markUsed(organizationId: string, apiKeyId: string, serviceAccountId: string): Promise<void> {
+  markUsed(
+    organizationId: string,
+    apiKeyId: string,
+    serviceAccountId: string,
+  ): Promise<void> {
     return withTenantRepository(
       this.pool,
       { actorId: serviceAccountId, organizationId },
@@ -52,8 +65,11 @@ export class DatabaseApiKeyStore implements ApiKeyStore {
   }
 
   revoke(organizationId: string, actorId: string, apiKeyId: string) {
-    return withTenantRepository(this.pool, { actorId, organizationId }, (repository) =>
-      repository.revokeApiKey({ actorId, organizationId }, apiKeyId),
+    return withTenantRepository(
+      this.pool,
+      { actorId, organizationId },
+      (repository) =>
+        repository.revokeApiKey({ actorId, organizationId }, apiKeyId),
     )
   }
 }

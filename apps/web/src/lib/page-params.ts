@@ -1,4 +1,6 @@
-export type SearchParams = Promise<Record<string, string | string[] | undefined>>
+export type SearchParams = Promise<
+  Record<string, string | string[] | undefined>
+>
 
 export async function selectionFromSearchParams(searchParams: SearchParams) {
   const params = await searchParams

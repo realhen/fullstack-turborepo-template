@@ -74,7 +74,9 @@ export class PreTenantAuthorizationLookup {
     })
   }
 
-  listOrganizations(userId: string): Promise<PreTenantOrganizationMembership[]> {
+  listOrganizations(
+    userId: string,
+  ): Promise<PreTenantOrganizationMembership[]> {
     return this.withRuntimeRole(async (client) => {
       const result = await client.query<{
         id: string
@@ -113,7 +115,8 @@ export class PreTenantAuthorizationLookup {
         [input.issuer, input.subject, input.provider, input.email],
       )
       const userId = result.rows[0]?.user_id
-      if (!userId) throw new Error('Identity provisioning did not return a user')
+      if (!userId)
+        throw new Error('Identity provisioning did not return a user')
       return userId
     })
   }

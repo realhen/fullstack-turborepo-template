@@ -24,7 +24,9 @@ export class BillingWebhookController {
     @Headers('stripe-signature') signature?: string,
   ) {
     if (!request.rawBody) {
-      throw new BadRequestException('Raw body is required for webhook verification')
+      throw new BadRequestException(
+        'Raw body is required for webhook verification',
+      )
     }
     // This returns only durable receipt state. Redirects and webhook delivery
     // are never interpreted as payment success by the HTTP request itself.

@@ -33,7 +33,11 @@ export class InvitationController {
     @CurrentPrincipal() principal: Principal,
     @Body() input: CreateInvitationDto,
   ) {
-    return this.invitations.create(organizationId, principal.userId ?? principal.id, input)
+    return this.invitations.create(
+      organizationId,
+      principal.userId ?? principal.id,
+      input,
+    )
   }
 
   @Delete('organizations/:organizationId/invitations/:invitationId')
@@ -41,15 +45,23 @@ export class InvitationController {
   @RequireOrganizationPermissions(['members:manage'])
   revoke(
     @Param('organizationId', OrganizationIdPipe) organizationId: string,
-    @Param('invitationId', new ParseUUIDPipe({ version: '4' })) invitationId: string,
+    @Param('invitationId', new ParseUUIDPipe({ version: '4' }))
+    invitationId: string,
     @CurrentPrincipal() principal: Principal,
   ) {
-    return this.invitations.revoke(organizationId, principal.userId ?? principal.id, invitationId)
+    return this.invitations.revoke(
+      organizationId,
+      principal.userId ?? principal.id,
+      invitationId,
+    )
   }
 
   @Post('invitations/accept')
   @RequireAuthenticated()
-  accept(@Body() input: AcceptInvitationDto, @CurrentPrincipal() principal: Principal) {
+  accept(
+    @Body() input: AcceptInvitationDto,
+    @CurrentPrincipal() principal: Principal,
+  ) {
     return this.invitations.accept(input.token, {
       email: principal.email,
       userId: principal.userId ?? principal.id,

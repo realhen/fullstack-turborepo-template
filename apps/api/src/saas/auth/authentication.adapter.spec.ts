@@ -7,9 +7,9 @@ import {
 
 describe('authentication adapters', () => {
   it('fails closed when authentication is disabled', async () => {
-    await expect(new DisabledAuthenticationAdapter().authenticate('token')).rejects.toThrow(
-      'Authentication is disabled',
-    )
+    await expect(
+      new DisabledAuthenticationAdapter().authenticate('token'),
+    ).rejects.toThrow('Authentication is disabled')
   })
 
   it('accepts only the configured local token', async () => {

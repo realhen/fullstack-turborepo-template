@@ -3,9 +3,7 @@ import type {
   OrganizationMembershipStore,
 } from './organization.types'
 
-export class InMemoryOrganizationMembershipStore
-  implements OrganizationMembershipStore
-{
+export class InMemoryOrganizationMembershipStore implements OrganizationMembershipStore {
   constructor(private readonly memberships: OrganizationMembership[] = []) {}
 
   async getMembership(
@@ -15,7 +13,8 @@ export class InMemoryOrganizationMembershipStore
     return (
       this.memberships.find(
         (membership) =>
-          membership.organization.id === organizationId && membership.userId === userId,
+          membership.organization.id === organizationId &&
+          membership.userId === userId,
       ) ?? null
     )
   }

@@ -13,7 +13,10 @@ export class OrganizationManagementController {
 
   @Post()
   @RequireAuthenticated()
-  create(@Body() input: CreateOrganizationDto, @CurrentPrincipal() principal: Principal) {
+  create(
+    @Body() input: CreateOrganizationDto,
+    @CurrentPrincipal() principal: Principal,
+  ) {
     return this.organizations.create(input, principal.userId ?? principal.id)
   }
 }

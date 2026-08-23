@@ -4,7 +4,9 @@ import type { AuditReadEvent, AuditReadStore } from './audit-read.types'
 
 export class InMemoryAuditReadStore implements AuditReadStore, AuditStore {
   constructor(
-    private readonly events: (AuditReadEvent & { organizationId: string })[] = [],
+    private readonly events: (AuditReadEvent & {
+      organizationId: string
+    })[] = [],
   ) {}
 
   async append(event: AuditEventInput): Promise<void> {
@@ -30,7 +32,8 @@ export class InMemoryAuditReadStore implements AuditReadStore, AuditStore {
     return this.events
       .filter((event) => event.organizationId === organizationId)
       .sort((left, right) => {
-        const occurredAt = right.occurredAt.valueOf() - left.occurredAt.valueOf()
+        const occurredAt =
+          right.occurredAt.valueOf() - left.occurredAt.valueOf()
         return occurredAt || right.id.localeCompare(left.id)
       })
       .filter((event) => {

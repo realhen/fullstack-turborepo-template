@@ -17,18 +17,14 @@ import type {
 } from './saas.types'
 
 type OrganizationListResponse = ApiGetResponse<'/api/v1/organizations'>
-type ProjectListResponse = ApiGetResponse<
-  '/api/v1/organizations/{organizationId}/projects'
->
-type BillingPlansResponse = ApiGetResponse<
-  '/api/v1/organizations/{organizationId}/billing/plans'
->
-type AuditEventsResponse = ApiGetResponse<
-  '/api/v1/organizations/{organizationId}/audit-events'
->
-type ProjectMembersResponse = ApiGetResponse<
-  '/api/v1/projects/{projectId}/members'
->
+type ProjectListResponse =
+  ApiGetResponse<'/api/v1/organizations/{organizationId}/projects'>
+type BillingPlansResponse =
+  ApiGetResponse<'/api/v1/organizations/{organizationId}/billing/plans'>
+type AuditEventsResponse =
+  ApiGetResponse<'/api/v1/organizations/{organizationId}/audit-events'>
+type ProjectMembersResponse =
+  ApiGetResponse<'/api/v1/projects/{projectId}/members'>
 
 const client = createServerApiClient()
 
@@ -58,7 +54,9 @@ function text(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null
 }
 
-function organizationOptions(response: OrganizationListResponse): OrganizationOption[] {
+function organizationOptions(
+  response: OrganizationListResponse,
+): OrganizationOption[] {
   if (!Array.isArray(response)) return []
   return response.flatMap((item) => {
     const membership = record(item)

@@ -6,9 +6,7 @@ import type {
   OrganizationManagementStore,
 } from './organization-management.types'
 
-export class DatabaseOrganizationManagementStore
-  implements OrganizationManagementStore
-{
+export class DatabaseOrganizationManagementStore implements OrganizationManagementStore {
   constructor(private readonly pool: Pool) {}
 
   create(input: CreateOrganizationInput, ownerId: string) {

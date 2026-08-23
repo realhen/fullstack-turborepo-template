@@ -1,6 +1,9 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common'
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
-import { CurrentPrincipal, RequireOrganizationPermissions } from '../auth/auth.decorators'
+import {
+  CurrentPrincipal,
+  RequireOrganizationPermissions,
+} from '../auth/auth.decorators'
 import type { Principal } from '../auth/principal'
 import { OrganizationPermissionGuard } from '../organizations/organization-permission.guard'
 import { OrganizationIdPipe } from '../organizations/organization-id.pipe'
@@ -10,7 +13,10 @@ import { AuditReadService } from './audit-read.service'
 @ApiTags('audit')
 @ApiBearerAuth()
 @UseGuards(OrganizationPermissionGuard)
-@Controller({ path: 'organizations/:organizationId/audit-events', version: '1' })
+@Controller({
+  path: 'organizations/:organizationId/audit-events',
+  version: '1',
+})
 export class AuditReadController {
   constructor(private readonly audit: AuditReadService) {}
 
@@ -21,6 +27,10 @@ export class AuditReadController {
     @CurrentPrincipal() principal: Principal,
     @Query() query: ListAuditEventsDto,
   ) {
-    return this.audit.list(organizationId, principal.userId ?? principal.id, query)
+    return this.audit.list(
+      organizationId,
+      principal.userId ?? principal.id,
+      query,
+    )
   }
 }

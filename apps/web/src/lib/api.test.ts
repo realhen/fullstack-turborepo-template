@@ -25,7 +25,9 @@ describe('getApiHealth', () => {
       'fetch',
       vi
         .fn()
-        .mockResolvedValue(Response.json({ error: 'unavailable' }, { status: 503 })),
+        .mockResolvedValue(
+          Response.json({ error: 'unavailable' }, { status: 503 }),
+        ),
     )
 
     await expect(getApiHealth()).resolves.toBeNull()

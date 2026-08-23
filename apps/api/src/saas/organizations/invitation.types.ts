@@ -18,13 +18,20 @@ export type InvitationAcceptance = {
 }
 
 export interface InvitationStore {
-  accept(tokenHash: string, user: { email: string; userId: string }): Promise<boolean>
+  accept(
+    tokenHash: string,
+    user: { email: string; userId: string },
+  ): Promise<boolean>
   create(
     organizationId: string,
     actorId: string,
     input: CreateInvitationInput,
   ): Promise<{ id: string }>
-  revoke(organizationId: string, actorId: string, invitationId: string): Promise<boolean>
+  revoke(
+    organizationId: string,
+    actorId: string,
+    invitationId: string,
+  ): Promise<boolean>
 }
 
 export const INVITATION_STORE = Symbol('INVITATION_STORE')
