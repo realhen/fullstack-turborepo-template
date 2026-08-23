@@ -7,7 +7,7 @@ RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 FROM base AS pruner
 WORKDIR /repo
 COPY . .
-RUN pnpm turbo prune @repo/web --docker
+RUN pnpm dlx turbo@2.10.11 prune @repo/web --docker
 
 FROM base AS builder
 WORKDIR /repo
