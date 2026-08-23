@@ -24,6 +24,7 @@ export class OrganizationPermissionGuard implements CanActivate {
   constructor(
     @Inject(Reflector)
     private readonly reflector: Reflector,
+    @Inject(AuthenticationService)
     private readonly authentication: AuthenticationService,
     @Inject(ORGANIZATION_PERMISSION_EVALUATOR)
     private readonly permissions: OrganizationPermissionEvaluator,
