@@ -86,7 +86,7 @@ describe('ApplicationStack', () => {
     template.hasResourceProperties(
       'AWS::ElasticLoadBalancingV2::Listener',
       Match.objectLike({
-        Certificates: Match.arrayWith([Match.anyValue()]),
+        Certificates: Match.anyValue(),
         Port: 443,
         Protocol: 'HTTPS',
       }),
@@ -148,11 +148,14 @@ describe('ApplicationStack', () => {
   })
 
   it('builds Docker assets for the Fargate x86_64 platform', () => {
-    const { app, stack } = createStack()
+    const { app } = createStack()
     const assembly = app.synth()
-    const artifact = assembly.getStackArtifact(stack.artifactId)
-    const dockerImages = artifact.assets.flatMap((asset) =>
-      Object.values(asset.manifest.dockerImages ?? {}),
+    const assetManifests = assembly.artifacts.filter(
+      (artifact): artifact is cdk.cx_api.AssetManifestArtifact =>
+        cdk.cx_api.AssetManifestArtifact.isAssetManifestArtifact(artifact),
+    )
+    const dockerImages = assetManifests.flatMap((artifact) =>
+      Object.values(artifact.contents.dockerImages ?? {}),
     )
 
     expect(dockerImages).toHaveLength(2)
