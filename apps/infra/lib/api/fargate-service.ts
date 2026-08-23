@@ -7,10 +7,10 @@ import type * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager'
 import type { Construct } from 'constructs'
 import type { AuthConfiguration } from '../config.js'
 import { createRepositoryImage } from '../constructs/container-image.js'
+import { createDatabaseBindings } from '../constructs/database-bindings.js'
 import { FargateService } from '../constructs/fargate-service.js'
 import {
   API_POOL_MAX,
-  createDatabaseBindings,
   createMigrationInitContainer,
   createStandaloneMigrationTask,
 } from './database.js'

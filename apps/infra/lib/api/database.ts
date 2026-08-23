@@ -1,36 +1,12 @@
 import * as cdk from 'aws-cdk-lib'
 import * as ecs from 'aws-cdk-lib/aws-ecs'
 import * as logs from 'aws-cdk-lib/aws-logs'
-import type * as rds from 'aws-cdk-lib/aws-rds'
 import type { Construct } from 'constructs'
+import type { DatabaseBindings } from '../constructs/database-bindings.js'
 import type { DependencyContainerOptions } from '../constructs/fargate-service.js'
 
 export const API_POOL_MAX = '4'
 export const MIGRATION_POOL_MAX = '1'
-export const RDS_GLOBAL_BUNDLE_PATH = '/etc/ssl/certs/rds-global-bundle.pem'
-
-export interface DatabaseBindings {
-  environment: Record<string, string>
-  secrets: Record<string, ecs.Secret>
-}
-
-export function createDatabaseBindings(
-  database: rds.DatabaseInstance,
-): DatabaseBindings {
-  return {
-    environment: {
-      PGDATABASE: 'app',
-      PGHOST: database.dbInstanceEndpointAddress,
-      PGPORT: database.dbInstanceEndpointPort,
-      PGSSLMODE: 'verify-full',
-      PGSSLROOTCERT: RDS_GLOBAL_BUNDLE_PATH,
-    },
-    secrets: {
-      PGPASSWORD: ecs.Secret.fromSecretsManager(database.secret!, 'password'),
-      PGUSER: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
-    },
-  }
-}
 
 export function createMigrationInitContainer(
   image: ecs.ContainerImage,
