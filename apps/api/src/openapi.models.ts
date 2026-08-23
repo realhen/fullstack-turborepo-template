@@ -2,41 +2,41 @@ import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 
 /** Stable response models exported through the generated frontend client. */
 export class Health {
-  @ApiProperty({ enum: ['api'] })
+  @ApiProperty({ enum: ['api'], type: String })
   service!: 'api'
 
-  @ApiProperty({ enum: ['ok'] })
+  @ApiProperty({ enum: ['ok'], type: String })
   status!: 'ok'
 }
 
 export class Principal {
-  @ApiProperty()
+  @ApiProperty({ type: String })
   id!: string
 
-  @ApiPropertyOptional({ format: 'email' })
+  @ApiPropertyOptional({ format: 'email', type: String })
   email?: string
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: Boolean })
   emailVerified?: boolean
 
-  @ApiProperty()
+  @ApiProperty({ type: String })
   provider!: string
 
   @ApiProperty({ isArray: true, type: String })
   scopes!: string[]
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: String })
   userId?: string
 }
 
 export class Project {
-  @ApiProperty()
+  @ApiProperty({ type: String })
   id!: string
 
-  @ApiProperty()
+  @ApiProperty({ type: String })
   name!: string
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ type: String })
   organizationId?: string
 }
 
@@ -44,9 +44,9 @@ export class ProjectMembership {
   @ApiProperty({ type: () => Project })
   project!: Project
 
-  @ApiProperty({ enum: ['owner', 'admin', 'member', 'viewer'] })
+  @ApiProperty({ enum: ['owner', 'admin', 'member', 'viewer'], type: String })
   role!: 'owner' | 'admin' | 'member' | 'viewer'
 
-  @ApiProperty()
+  @ApiProperty({ type: String })
   userId!: string
 }
