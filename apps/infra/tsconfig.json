@@ -11,6 +11,6 @@
     "tsBuildInfoFile": "dist/tsconfig.tsbuildinfo",
     "types": ["node"]
   },
-  "include": ["bin/**/*.ts", "lib/**/*.ts", "test/**/*.ts"],
+  "include": ["app.ts", "lib/**/*.ts", "test/**/*.ts"],
   "exclude": ["cdk.out", "dist", "node_modules"]
 }

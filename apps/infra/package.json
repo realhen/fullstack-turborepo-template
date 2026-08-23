@@ -9,7 +9,7 @@
     "deploy": "cdk deploy --all",
     "destroy": "cdk destroy --all",
     "diff": "cdk diff",
-    "lint": "eslint bin lib test --max-warnings=0",
+    "lint": "eslint app.ts lib test --max-warnings=0",
     "synth": "cdk synth",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"

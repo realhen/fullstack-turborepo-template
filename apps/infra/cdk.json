@@ -1,7 +1,8 @@
 {
-  "app": "pnpm exec tsx bin/infra.ts",
+  "app": "pnpm exec tsx app.ts",
   "context": {
     "projectName": "fullstack-app",
+    "@aws-cdk/core:defaultCrossStackReferences": "strong",
     "@aws-cdk/aws-signer:signingProfileNamePassedToCfn": true,
     "@aws-cdk/core:newStyleStackSynthesis": true,
     "@aws-cdk/core:stackRelativeExports": true,

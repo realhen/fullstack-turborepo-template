@@ -383,7 +383,7 @@ Run:
 pnpm --filter @repo/infra synth foundation-stack -c domainName=api.fullstack-template.com -c webOrigin=https://app.fullstack-template.com
 pnpm --filter @repo/infra synth api-stack -c domainName=api.fullstack-template.com -c webOrigin=https://app.fullstack-template.com
 pnpm --filter @repo/infra synth worker-stack -c domainName=api.fullstack-template.com -c webOrigin=https://app.fullstack-template.com
-pnpm --filter @repo/infra synth --all -c domainName=api.fullstack-template.com -c webOrigin=https://app.fullstack-template.com
+pnpm --filter @repo/infra synth -c domainName=api.fullstack-template.com -c webOrigin=https://app.fullstack-template.com
 ```
 
 Expected: each named stack synthesizes; `--all` contains three stack templates and does not access live AWS APIs.
@@ -415,7 +415,7 @@ git commit -m "refactor(infra): compose independent CDK stacks"
 Replace the production synthesis command with:
 
 ```sh
-pnpm --filter @repo/infra synth --all \
+pnpm --filter @repo/infra synth \
   -c domainName=api.example.com \
   -c webOrigin=https://app.example.com
 ```
@@ -471,7 +471,7 @@ pnpm --filter @repo/infra test
 pnpm --filter @repo/infra lint
 pnpm --filter @repo/infra typecheck
 pnpm --filter @repo/infra build
-pnpm --filter @repo/infra synth --all \
+pnpm --filter @repo/infra synth \
   -c domainName=api.fullstack-template.com \
   -c webOrigin=https://app.fullstack-template.com
 ```
