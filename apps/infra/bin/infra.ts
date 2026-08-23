@@ -4,7 +4,9 @@ import { ApplicationStack } from '../lib/application-stack.js'
 
 const app = new cdk.App()
 const projectName = app.node.tryGetContext('projectName') as string | undefined
-const certificateArn = app.node.tryGetContext('certificateArn') as string | undefined
+const certificateArn = app.node.tryGetContext('certificateArn') as
+  | string
+  | undefined
 
 if (!certificateArn) {
   throw new Error(
