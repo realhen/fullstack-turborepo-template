@@ -48,32 +48,12 @@ jobs:
           cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install --no-frozen-lockfile
-
-      - name: Normalize generated repository artifacts
-        if: github.head_ref == 'codex/saas-template'
-        run: |
-          pnpm format
-          pnpm openapi:generate
-          pnpm --filter @repo/api-client generate
-          pnpm format
-
-      - name: Upload normalized source for explicit review
-        if: github.head_ref == 'codex/saas-template'
-        uses: actions/upload-artifact@v7
-        with:
-          name: normalized-saas-source
-          include-hidden-files: true
-          path: |
-            .
-            !.git
-            !node_modules
+        run: pnpm install --frozen-lockfile
 
       - name: Check formatting
         run: pnpm format:check
 
       - name: Verify generated OpenAPI client is current
-        if: github.head_ref != 'codex/saas-template'
         run: |
           pnpm openapi:generate
           pnpm --filter @repo/api-client generate
