@@ -15,11 +15,14 @@ import * as route53Targets from 'aws-cdk-lib/aws-route53-targets'
 import * as secretsmanager from 'aws-cdk-lib/aws-secretsmanager'
 import * as sns from 'aws-cdk-lib/aws-sns'
 import * as snsSubscriptions from 'aws-cdk-lib/aws-sns-subscriptions'
-import * as sqs from 'aws-cdk-lib/aws-sqs'
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2'
 import type { Construct } from 'constructs'
 
 export const MAX_PROJECT_NAME_LENGTH = 63
+const RDS_GLOBAL_BUNDLE_PATH = '/etc/ssl/certs/rds-global-bundle.pem'
+const API_POOL_MAX = '4'
+const WORKER_POOL_MAX = '2'
+const MIGRATION_POOL_MAX = '1'
 
 export interface ApplicationStackProps extends cdk.StackProps {
   alarmEmail?: string
@@ -118,19 +121,6 @@ export class ApplicationStack extends cdk.Stack {
       automaticallyAfter: cdk.Duration.days(30),
     })
 
-    const deadLetterQueue = new sqs.Queue(this, 'AsyncDeadLetterQueue', {
-      encryption: sqs.QueueEncryption.SQS_MANAGED,
-      queueName: `${props.projectName}-async-dlq`,
-      retentionPeriod: cdk.Duration.days(14),
-    })
-    const asyncQueue = new sqs.Queue(this, 'AsyncQueue', {
-      deadLetterQueue: { maxReceiveCount: 5, queue: deadLetterQueue },
-      encryption: sqs.QueueEncryption.SQS_MANAGED,
-      queueName: `${props.projectName}-async`,
-      retentionPeriod: cdk.Duration.days(14),
-      visibilityTimeout: cdk.Duration.minutes(5),
-    })
-
     const applicationSecrets = props.applicationSecretsArn
       ? secretsmanager.Secret.fromSecretCompleteArn(
           this,
@@ -167,6 +157,7 @@ export class ApplicationStack extends cdk.Stack {
       file: 'apps/api/Dockerfile',
       ignoreMode: cdk.IgnoreMode.GLOB,
       platform: ecrAssets.Platform.LINUX_AMD64,
+      target: 'aws-runner',
     })
 
     const apiTask = new ecs.FargateTaskDefinition(this, 'ApiTask', {
@@ -178,9 +169,38 @@ export class ApplicationStack extends cdk.Stack {
       },
     })
 
+    const apiDatabaseEnvironment = {
+      PGDATABASE: 'app',
+      PGHOST: database.dbInstanceEndpointAddress,
+      PGPORT: database.dbInstanceEndpointPort,
+      PGSSLMODE: 'verify-full',
+      PGSSLROOTCERT: RDS_GLOBAL_BUNDLE_PATH,
+    }
+    const databaseSecrets = {
+      PGPASSWORD: ecs.Secret.fromSecretsManager(database.secret!, 'password'),
+      PGUSER: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
+    }
+    const migrationInitContainer = apiTask.addContainer(
+      'MigrationInitContainer',
+      {
+        command: ['node', 'node_modules/@repo/database/dist/migrate.js'],
+        environment: {
+          DATABASE_POOL_MAX: MIGRATION_POOL_MAX,
+          NODE_ENV: 'production',
+          ...apiDatabaseEnvironment,
+        },
+        essential: false,
+        image: apiImage,
+        logging: ecs.LogDrivers.awsLogs({
+          logRetention: logs.RetentionDays.ONE_MONTH,
+          streamPrefix: 'migration-init',
+        }),
+        secrets: databaseSecrets,
+      },
+    )
+
     const apiContainer = apiTask.addContainer('ApiContainer', {
       environment: {
-        ASYNC_QUEUE_URL: asyncQueue.queueUrl,
         AUTH_MODE: authConfigured ? 'oidc' : 'disabled',
         ...(props.authAudience ? { AUTH_AUDIENCE: props.authAudience } : {}),
         ...(props.authClientId ? { AUTH_CLIENT_ID: props.authClientId } : {}),
@@ -188,13 +208,10 @@ export class ApplicationStack extends cdk.Stack {
         ...(props.authJwksUri ? { AUTH_JWKS_URI: props.authJwksUri } : {}),
         BILLING_PROVIDER: applicationSecrets ? 'stripe' : 'disabled',
         CORS_ORIGIN: `https://${domainName}`,
-        DB_DATABASE: 'app',
-        DB_HOST: database.dbInstanceEndpointAddress,
-        DB_PORT: database.dbInstanceEndpointPort,
-        DB_SSL: 'true',
-        DB_USER: 'app',
+        DATABASE_POOL_MAX: API_POOL_MAX,
         NODE_ENV: 'production',
         PORT: '3001',
+        ...apiDatabaseEnvironment,
       },
       image: apiImage,
       healthCheck: {
@@ -212,12 +229,8 @@ export class ApplicationStack extends cdk.Stack {
         streamPrefix: 'api',
       }),
       secrets: {
-        DATABASE_SECRET: ecs.Secret.fromSecretsManager(database.secret!),
         WORKER_SECRET: ecs.Secret.fromSecretsManager(workerSecret, 'secret'),
-        DB_PASSWORD: ecs.Secret.fromSecretsManager(
-          database.secret!,
-          'password',
-        ),
+        ...databaseSecrets,
         ...(applicationSecrets
           ? {
               STRIPE_SECRET_KEY: ecs.Secret.fromSecretsManager(
@@ -241,6 +254,11 @@ export class ApplicationStack extends cdk.Stack {
       },
     })
 
+    apiContainer.addContainerDependencies({
+      condition: ecs.ContainerDependencyCondition.SUCCESS,
+      container: migrationInitContainer,
+    })
+
     apiContainer.addPortMappings({ containerPort: 3001 })
 
     const apiService = new ecs.FargateService(this, 'ApiService', {
@@ -256,7 +274,6 @@ export class ApplicationStack extends cdk.Stack {
       taskDefinition: apiTask,
     })
 
-    asyncQueue.grantSendMessages(apiTask.taskRole)
     database.connections.allowDefaultPortFrom(apiService)
 
     const migrationTask = new ecs.FargateTaskDefinition(this, 'MigrationTask', {
@@ -269,14 +286,18 @@ export class ApplicationStack extends cdk.Stack {
     })
     migrationTask.addContainer('MigrationContainer', {
       command: ['node', 'node_modules/@repo/database/dist/migrate.js'],
-      environment: { NODE_ENV: 'production' },
+      environment: {
+        DATABASE_POOL_MAX: MIGRATION_POOL_MAX,
+        NODE_ENV: 'production',
+        ...apiDatabaseEnvironment,
+      },
       image: apiImage,
       logging: ecs.LogDrivers.awsLogs({
         logRetention: logs.RetentionDays.ONE_MONTH,
         streamPrefix: 'migration',
       }),
       secrets: {
-        DATABASE_SECRET: ecs.Secret.fromSecretsManager(database.secret!),
+        ...databaseSecrets,
       },
     })
 
@@ -290,18 +311,15 @@ export class ApplicationStack extends cdk.Stack {
     })
     workerTask.addContainer('WorkerContainer', {
       environment: {
-        ASYNC_QUEUE_URL: asyncQueue.queueUrl,
-        AWS_REGION: this.region,
         BILLING_PROCESSOR_URL: `http://api.${props.projectName}.local:3001/api/v1/internal/billing/jobs`,
-        BILLING_PROVIDER: applicationSecrets ? 'stripe' : 'disabled',
-        BILLING_SQS_QUEUE_URL: asyncQueue.queueUrl,
-        BILLING_WORKER_ADAPTER: 'sqs',
-        DB_DATABASE: 'app',
-        DB_HOST: database.dbInstanceEndpointAddress,
-        DB_PORT: database.dbInstanceEndpointPort,
-        DB_SSL: 'true',
-        DB_USER: 'app',
+        BILLING_JOB_BATCH_SIZE: '10',
+        BILLING_JOB_LEASE_MS: '60000',
+        BILLING_JOB_MAX_ATTEMPTS: '5',
+        BILLING_JOB_POLL_MS: '1000',
+        BILLING_JOB_RETRY_MS: '30000',
+        DATABASE_POOL_MAX: WORKER_POOL_MAX,
         NODE_ENV: 'production',
+        ...apiDatabaseEnvironment,
       },
       image: ecs.ContainerImage.fromAsset(repoRoot, {
         exclude: [
@@ -315,26 +333,15 @@ export class ApplicationStack extends cdk.Stack {
         file: 'apps/worker/Dockerfile',
         ignoreMode: cdk.IgnoreMode.GLOB,
         platform: ecrAssets.Platform.LINUX_AMD64,
+        target: 'aws-runner',
       }),
       logging: ecs.LogDrivers.awsLogs({
         logRetention: logs.RetentionDays.ONE_MONTH,
         streamPrefix: 'worker',
       }),
       secrets: {
-        DATABASE_SECRET: ecs.Secret.fromSecretsManager(database.secret!),
         WORKER_SECRET: ecs.Secret.fromSecretsManager(workerSecret, 'secret'),
-        DB_PASSWORD: ecs.Secret.fromSecretsManager(
-          database.secret!,
-          'password',
-        ),
-        ...(applicationSecrets
-          ? {
-              STRIPE_SECRET_KEY: ecs.Secret.fromSecretsManager(
-                applicationSecrets,
-                'STRIPE_SECRET_KEY',
-              ),
-            }
-          : {}),
+        ...databaseSecrets,
       },
     })
     const workerService = new ecs.FargateService(this, 'WorkerService', {
@@ -347,18 +354,12 @@ export class ApplicationStack extends cdk.Stack {
       serviceName: `${props.projectName}-worker`,
       taskDefinition: workerTask,
     })
-    asyncQueue.grantConsumeMessages(workerTask.taskRole)
     database.connections.allowDefaultPortFrom(workerService)
     apiService.connections.allowFrom(workerService, ec2.Port.tcp(3001))
     workerService
       .autoScaleTaskCount({ maxCapacity: 4, minCapacity: 1 })
-      .scaleOnMetric('QueueDepthScaling', {
-        metric: asyncQueue.metricApproximateNumberOfMessagesVisible(),
-        scalingSteps: [
-          { upper: 0, change: -1 },
-          { lower: 1, change: +1 },
-          { lower: 100, change: +2 },
-        ],
+      .scaleOnCpuUtilization('WorkerCpuScaling', {
+        targetUtilizationPercent: 70,
       })
 
     const webService = new ecsPatterns.ApplicationLoadBalancedFargateService(
@@ -479,6 +480,16 @@ export class ApplicationStack extends cdk.Stack {
       targets: [apiService],
     })
 
+    // Each API task gates startup on its same-image migration init container.
+    // After API stabilization, ECS keeps web ahead of the worker that calls
+    // the API's internal billing endpoint.
+    ;(
+      webService.service.node.defaultChild as ecs.CfnService
+    ).addResourceDependency(apiService.node.defaultChild as ecs.CfnService)
+    ;(workerService.node.defaultChild as ecs.CfnService).addResourceDependency(
+      webService.service.node.defaultChild as ecs.CfnService,
+    )
+
     apiService
       .autoScaleTaskCount({ maxCapacity: 4, minCapacity: 2 })
       .scaleOnCpuUtilization('ApiCpuScaling', { targetUtilizationPercent: 70 })
@@ -506,25 +517,6 @@ export class ApplicationStack extends cdk.Stack {
           { period: cdk.Duration.minutes(5), statistic: 'sum' },
         ),
         threshold: 5,
-        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-      }),
-      new cloudwatch.Alarm(this, 'QueueAgeAlarm', {
-        alarmDescription: 'Asynchronous jobs have stopped draining promptly.',
-        evaluationPeriods: 2,
-        metric: asyncQueue.metricApproximateAgeOfOldestMessage({
-          period: cdk.Duration.minutes(5),
-        }),
-        threshold: 300,
-        treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
-      }),
-      new cloudwatch.Alarm(this, 'DeadLetterQueueAlarm', {
-        alarmDescription:
-          'At least one asynchronous job requires intervention.',
-        evaluationPeriods: 1,
-        metric: deadLetterQueue.metricApproximateNumberOfMessagesVisible({
-          period: cdk.Duration.minutes(1),
-        }),
-        threshold: 1,
         treatMissingData: cloudwatch.TreatMissingData.NOT_BREACHING,
       }),
       new cloudwatch.Alarm(this, 'DatabaseCpuAlarm', {
@@ -561,14 +553,6 @@ export class ApplicationStack extends cdk.Stack {
           }),
         ],
         [
-          new cloudwatch.GraphWidget({
-            left: [
-              asyncQueue.metricApproximateNumberOfMessagesVisible(),
-              asyncQueue.metricApproximateAgeOfOldestMessage(),
-              deadLetterQueue.metricApproximateNumberOfMessagesVisible(),
-            ],
-            title: 'Async processing',
-          }),
           new cloudwatch.GraphWidget({
             left: [
               database.metricCPUUtilization(),
@@ -613,14 +597,12 @@ export class ApplicationStack extends cdk.Stack {
       value: webService.loadBalancer.loadBalancerDnsName,
     })
 
-    new cdk.CfnOutput(this, 'AsyncQueueUrl', {
-      value: asyncQueue.queueUrl,
-    })
     new cdk.CfnOutput(this, 'DatabaseSecretArn', {
       value: database.secret!.secretArn,
     })
     new cdk.CfnOutput(this, 'MigrationTaskDefinitionArn', {
-      description: 'Run this one-off ECS task before an application rollout.',
+      description:
+        'Standalone migration task for diagnostics or manual recovery; API tasks run the normal init gate.',
       value: migrationTask.taskDefinitionArn,
     })
     new cdk.CfnOutput(this, 'MigrationClusterName', {

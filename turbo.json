@@ -15,7 +15,6 @@
         "BILLING_PROVIDER",
         "CDK_DEFAULT_ACCOUNT",
         "CDK_DEFAULT_REGION",
-        "DATABASE_SECRET",
         "DATABASE_URL",
         "NODE_ENV",
         "NEXT_PUBLIC_API_URL",

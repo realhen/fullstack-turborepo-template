@@ -16,10 +16,20 @@ COPY packages/typescript-config packages/typescript-config
 RUN pnpm --filter @repo/worker... build
 RUN pnpm deploy --filter @repo/worker --prod /prod/worker
 
-FROM node:24-alpine
+FROM node:24-alpine AS runner-base
 WORKDIR /app
 ENV NODE_ENV=production
-RUN addgroup --system --gid 1001 app && adduser --system --uid 1001 --ingroup app app
+RUN addgroup --system --gid 1001 app \
+    && adduser --system --uid 1001 --ingroup app app
 COPY --from=build --chown=app:app /prod/worker ./
 USER app
 CMD ["node", "dist/main.js"]
+
+FROM runner-base AS aws-runner
+USER root
+RUN wget -qO /etc/ssl/certs/rds-global-bundle.pem \
+      https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    && test -s /etc/ssl/certs/rds-global-bundle.pem
+USER app
+
+FROM runner-base AS runner

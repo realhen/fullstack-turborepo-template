@@ -86,10 +86,10 @@ export type VerifiedBillingEvent = {
 
 export interface BillingProvider {
   readonly name: BillingProviderName
-  createCustomer(input: {
-    organizationId: string
-    email?: string
-  }): Promise<{ id: string }>
+  createCustomer(
+    input: { organizationId: string; email?: string },
+    idempotencyKey: string,
+  ): Promise<{ id: string }>
   createCheckoutSession(
     input: BillingCheckoutRequest,
     idempotencyKey: string,
@@ -110,71 +110,32 @@ export type BillingOutboxMessage =
   | { kind: 'billing.webhook'; eventId: string }
   | { kind: 'billing.reconcile'; customerId: string }
 
-export type ClaimedBillingOutboxMessage = {
+export type ClaimedBillingJob = {
+  attempts: number
   id: string
   leaseToken: string
   message: BillingOutboxMessage
 }
 
-export interface BillingOutboxStore {
+export interface BillingJobStore {
   claimBatch(input: {
-    limit: number
     leaseForMilliseconds: number
+    limit: number
+    maxAttempts: number
     now: Date
-  }): Promise<ClaimedBillingOutboxMessage[]>
-  markSent(input: ClaimedBillingOutboxMessage): Promise<boolean>
-  releaseClaim(input: {
-    claimed: ClaimedBillingOutboxMessage
+  }): Promise<ClaimedBillingJob[]>
+  complete(input: ClaimedBillingJob): Promise<boolean>
+  extendLease(input: {
+    id: string
+    leaseForMilliseconds: number
+    leaseToken: string
+    now: Date
+  }): Promise<boolean>
+  retryOrDead(input: {
     error: string
-    retryAt: Date
-  }): Promise<void>
-}
-
-export interface BillingOutboxPublisher {
-  publish(message: BillingOutboxMessage): Promise<void>
-}
-
-/**
- * At-least-once outbox relay. Provider and webhook workers must deduplicate
- * downstream work using the Stripe event ID already carried by the message.
- */
-export class BillingOutboxDispatcher {
-  constructor(
-    private readonly store: BillingOutboxStore,
-    private readonly publisher: BillingOutboxPublisher,
-  ) {}
-
-  async dispatchOnce(
-    input: {
-      now?: Date
-      limit?: number
-      leaseForMilliseconds?: number
-      retryDelayMilliseconds?: number
-    } = {},
-  ): Promise<{ failed: number; sent: number }> {
-    const now = input.now ?? new Date()
-    const retryDelayMilliseconds = input.retryDelayMilliseconds ?? 30_000
-    const claimed = await this.store.claimBatch({
-      leaseForMilliseconds: input.leaseForMilliseconds ?? 60_000,
-      limit: input.limit ?? 10,
-      now,
-    })
-    let failed = 0
-    let sent = 0
-    for (const message of claimed) {
-      try {
-        await this.publisher.publish(message.message)
-        if (await this.store.markSent(message)) sent += 1
-      } catch (error) {
-        failed += 1
-        await this.store.releaseClaim({
-          claimed: message,
-          error:
-            error instanceof Error ? error.message : 'Outbox publish failed',
-          retryAt: new Date(now.getTime() + retryDelayMilliseconds),
-        })
-      }
-    }
-    return { failed, sent }
-  }
+    id: string
+    leaseToken: string
+    maxAttempts: number
+    nextAvailableAt: Date
+  }): Promise<{ dead: boolean; updated: boolean }>
 }

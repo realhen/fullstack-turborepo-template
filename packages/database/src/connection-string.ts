@@ -1,47 +1,150 @@
-type DatabaseEnvironment = {
-  DATABASE_SECRET?: string
+import { readFileSync } from 'node:fs'
+import type { PoolConfig } from 'pg'
+
+export type DatabaseEnvironment = NodeJS.ProcessEnv & {
+  DATABASE_POOL_CONNECTION_TIMEOUT_MS?: string
+  DATABASE_POOL_IDLE_TIMEOUT_MS?: string
+  DATABASE_POOL_MAX?: string
+  DATABASE_MIGRATION_URL?: string
   DATABASE_URL?: string
+  PGDATABASE?: string
+  PGHOST?: string
+  PGPASSWORD?: string
+  PGPORT?: string
+  PGSSLMODE?: string
+  PGSSLROOTCERT?: string
+  PGUSER?: string
 }
 
-type RdsSecret = {
-  dbname?: string
-  host?: string
-  password?: string
-  port?: number | string
-  username?: string
-}
-
-/** Supports a normal local URL or the JSON secret injected by ECS/RDS. */
-export function databaseUrlFromEnvironment(
-  environment: DatabaseEnvironment = process.env,
-): string | undefined {
-  if (environment.DATABASE_URL) return environment.DATABASE_URL
-  if (!environment.DATABASE_SECRET) return undefined
-
-  let secret: RdsSecret
-  try {
-    secret = JSON.parse(environment.DATABASE_SECRET) as RdsSecret
-  } catch {
-    throw new Error('DATABASE_SECRET must be valid RDS secret JSON')
-  }
-  if (!secret.host || !secret.username || !secret.password || !secret.dbname) {
+function sslConfig(environment: DatabaseEnvironment): PoolConfig['ssl'] {
+  const mode = environment.PGSSLMODE
+  if (!mode || mode === 'disable') return undefined
+  if (!['require', 'verify-ca', 'verify-full'].includes(mode)) {
     throw new Error(
-      'DATABASE_SECRET requires host, username, password, and dbname fields',
+      'PGSSLMODE must be disable, require, verify-ca, or verify-full',
+    )
+  }
+  const rootCert = environment.PGSSLROOTCERT
+  if (!rootCert && mode !== 'require') {
+    throw new Error(
+      'PGSSLROOTCERT is required for PGSSLMODE=verify-ca or verify-full',
+    )
+  }
+  let ca: string | undefined
+  if (rootCert) {
+    try {
+      ca = readFileSync(rootCert, 'utf8')
+    } catch {
+      throw new Error(
+        'PGSSLROOTCERT must point to a readable certificate bundle',
+      )
+    }
+    if (!ca.trim()) {
+      throw new Error(
+        'PGSSLROOTCERT must point to a readable certificate bundle',
+      )
+    }
+  }
+  return {
+    ...(ca ? { ca } : {}),
+    ...(mode === 'verify-ca' ? { checkServerIdentity: () => undefined } : {}),
+    rejectUnauthorized: true,
+  }
+}
+
+const standardPostgresKeys = [
+  'PGHOST',
+  'PGUSER',
+  'PGPASSWORD',
+  'PGDATABASE',
+] as const
+
+function optionalPositiveInteger(
+  environment: DatabaseEnvironment,
+  key: keyof DatabaseEnvironment,
+): number | undefined {
+  const value = environment[key]
+  if (value === undefined || value === '') return undefined
+  if (!/^\d+$/.test(value) || Number(value) < 1) {
+    throw new Error(`${key} must be a positive integer`)
+  }
+  return Number(value)
+}
+
+/** Builds a portable pg Pool configuration from DATABASE_URL or standard PG* variables. */
+export function databaseConfigFromEnvironment(
+  environment: DatabaseEnvironment = process.env,
+): PoolConfig | undefined {
+  const connectionTimeoutMillis = optionalPositiveInteger(
+    environment,
+    'DATABASE_POOL_CONNECTION_TIMEOUT_MS',
+  )
+  const idleTimeoutMillis = optionalPositiveInteger(
+    environment,
+    'DATABASE_POOL_IDLE_TIMEOUT_MS',
+  )
+  const max = optionalPositiveInteger(environment, 'DATABASE_POOL_MAX')
+  const poolSettings: PoolConfig = {
+    ...(connectionTimeoutMillis !== undefined
+      ? { connectionTimeoutMillis }
+      : {}),
+    ...(idleTimeoutMillis !== undefined ? { idleTimeoutMillis } : {}),
+    ...(max !== undefined ? { max } : {}),
+  }
+
+  if (environment.DATABASE_URL) {
+    const ssl = sslConfig(environment)
+    return {
+      connectionString: environment.DATABASE_URL,
+      ...(ssl ? { ssl } : {}),
+      ...poolSettings,
+    }
+  }
+
+  const suppliedStandardKeys = standardPostgresKeys.filter(
+    (key) => environment[key],
+  )
+  if (suppliedStandardKeys.length === 0) return undefined
+  if (suppliedStandardKeys.length !== standardPostgresKeys.length) {
+    throw new Error(
+      'DATABASE_URL or complete PGHOST/PGUSER/PGPASSWORD/PGDATABASE configuration is required',
     )
   }
 
-  const username = encodeURIComponent(secret.username)
-  const password = encodeURIComponent(secret.password)
-  const port = String(secret.port ?? 5432)
-  return `postgresql://${username}:${password}@${secret.host}:${port}/${encodeURIComponent(secret.dbname)}?sslmode=require`
+  const ssl = sslConfig(environment)
+  return {
+    database: environment.PGDATABASE,
+    host: environment.PGHOST,
+    password: environment.PGPASSWORD,
+    ...(environment.PGPORT
+      ? { port: optionalPositiveInteger(environment, 'PGPORT') }
+      : {}),
+    ...(ssl ? { ssl } : {}),
+    user: environment.PGUSER,
+    ...poolSettings,
+  }
 }
 
-export function requireDatabaseUrl(
+export function requireDatabaseConfig(
   environment: DatabaseEnvironment = process.env,
-): string {
-  const databaseUrl = databaseUrlFromEnvironment(environment)
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL or DATABASE_SECRET is required')
+): PoolConfig {
+  const config = databaseConfigFromEnvironment(environment)
+  if (!config) {
+    throw new Error(
+      'DATABASE_URL or complete PGHOST/PGUSER/PGPASSWORD/PGDATABASE configuration is required',
+    )
   }
-  return databaseUrl
+  return config
+}
+
+/** Uses a migration identity when supplied without bypassing runtime TLS or pool settings. */
+export function migrationDatabaseConfigFromEnvironment(
+  environment: DatabaseEnvironment = process.env,
+): PoolConfig {
+  return requireDatabaseConfig({
+    ...environment,
+    ...(environment.DATABASE_MIGRATION_URL
+      ? { DATABASE_URL: environment.DATABASE_MIGRATION_URL }
+      : {}),
+  })
 }

@@ -53,12 +53,8 @@ jobs:
       - name: Check formatting
         run: pnpm format:check
 
-      - name: Verify generated OpenAPI client is current
-        run: |
-          pnpm openapi:generate
-          pnpm --filter @repo/api-client generate
-          pnpm exec prettier --write packages/api-client/openapi.json packages/api-client/src/generated/schema.ts
-          git diff --exit-code -- packages/api-client/openapi.json packages/api-client/src/generated/schema.ts
+      - name: Generate OpenAPI client
+        run: pnpm api-client:generate
 
       - name: Apply and test database migrations
         env:

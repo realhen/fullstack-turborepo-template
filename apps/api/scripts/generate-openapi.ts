@@ -17,10 +17,16 @@ async function generate(): Promise<void> {
   try {
     await app.init()
     const document = createOpenApiDocument(app)
-    const destination = path.resolve(
-      __dirname,
-      '../../../packages/api-client/openapi.json',
-    )
+    const outputIndex = process.argv.indexOf('--output')
+    const requestedOutput =
+      outputIndex >= 0 ? process.argv[outputIndex + 1] : undefined
+    if (outputIndex >= 0 && !requestedOutput) {
+      throw new Error('--output requires a path')
+    }
+    const repositoryRoot = path.resolve(__dirname, '../../..')
+    const destination = requestedOutput
+      ? path.resolve(repositoryRoot, requestedOutput)
+      : path.join(repositoryRoot, 'packages/api-client/openapi.json')
     await mkdir(path.dirname(destination), { recursive: true })
     await writeFile(destination, `${JSON.stringify(document, null, 2)}\n`)
     console.log(`Generated ${destination}`)

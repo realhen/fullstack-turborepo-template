@@ -11,9 +11,24 @@ const envSchema = z
       .enum(['development', 'test', 'production'])
       .default('development'),
     PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
+    DATABASE_POOL_CONNECTION_TIMEOUT_MS: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .optional(),
+    DATABASE_POOL_IDLE_TIMEOUT_MS: z.coerce.number().int().min(1).optional(),
+    DATABASE_POOL_MAX: z.coerce.number().int().min(1).optional(),
     DATABASE_URL: z.string().min(1).optional(),
-    DATABASE_SECRET: z.string().min(1).optional(),
     DATABASE_MIGRATION_URL: z.string().min(1).optional(),
+    PGDATABASE: z.string().min(1).optional(),
+    PGHOST: z.string().min(1).optional(),
+    PGPASSWORD: z.string().min(1).optional(),
+    PGPORT: z.coerce.number().int().min(1).optional(),
+    PGSSLMODE: z
+      .enum(['disable', 'require', 'verify-ca', 'verify-full'])
+      .optional(),
+    PGSSLROOTCERT: z.string().min(1).optional(),
+    PGUSER: z.string().min(1).optional(),
     AUTH_MODE: z.enum(['disabled', 'local', 'oidc']).default('disabled'),
     AUTH_LOCAL_TOKEN: z.string().optional(),
     AUTH_LOCAL_SUBJECT: z.string().min(1).default('local-developer'),
@@ -60,11 +75,12 @@ const envSchema = z
     if (
       value.NODE_ENV === 'production' &&
       !value.DATABASE_URL &&
-      !value.DATABASE_SECRET
+      !(value.PGHOST && value.PGUSER && value.PGPASSWORD && value.PGDATABASE)
     ) {
       context.addIssue({
         code: 'custom',
-        message: 'DATABASE_URL or DATABASE_SECRET is required in production.',
+        message:
+          'DATABASE_URL or complete PGHOST/PGUSER/PGPASSWORD/PGDATABASE configuration is required in production.',
         path: ['DATABASE_URL'],
       })
     }

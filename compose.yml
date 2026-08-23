@@ -11,23 +11,9 @@ services:
       timeout: 5s
       retries: 10
     ports:
-      - '5432:5432'
+      - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - postgres-data:/var/lib/postgresql/data
-
-  localstack:
-    image: localstack/localstack:4
-    environment:
-      SERVICES: sqs
-    healthcheck:
-      test: ['CMD-SHELL', 'awslocal sqs get-queue-url --queue-name saas-async']
-      interval: 5s
-      timeout: 5s
-      retries: 20
-    ports:
-      - '4566:4566'
-    volumes:
-      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/10-create-queues.sh:ro
 
   migrate:
     build:
@@ -106,16 +92,13 @@ services:
     depends_on:
       api:
         condition: service_healthy
-      localstack:
-        condition: service_healthy
     environment:
-      AWS_ACCESS_KEY_ID: test
-      AWS_ENDPOINT_URL_SQS: http://localstack:4566
-      AWS_REGION: us-east-1
-      AWS_SECRET_ACCESS_KEY: test
+      BILLING_JOB_BATCH_SIZE: 10
+      BILLING_JOB_LEASE_MS: 60000
+      BILLING_JOB_MAX_ATTEMPTS: 5
+      BILLING_JOB_POLL_MS: 1000
+      BILLING_JOB_RETRY_MS: 30000
       BILLING_PROCESSOR_URL: http://api:3001/api/v1/internal/billing/jobs
-      BILLING_SQS_QUEUE_URL: http://localstack:4566/000000000000/saas-async
-      BILLING_WORKER_ADAPTER: sqs
       DATABASE_URL: postgresql://app:local-postgres-password@postgres:5432/app
       NODE_ENV: development
       WORKER_SECRET: local-worker-secret-change-me

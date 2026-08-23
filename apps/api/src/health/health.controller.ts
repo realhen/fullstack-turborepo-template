@@ -1,7 +1,7 @@
 import { Controller, Get } from '@nestjs/common'
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger'
 import { SkipThrottle } from '@nestjs/throttler'
-import { Health } from '../openapi.models'
+import { Health } from './health.presentation-model'
 
 @ApiTags('health')
 @SkipThrottle()

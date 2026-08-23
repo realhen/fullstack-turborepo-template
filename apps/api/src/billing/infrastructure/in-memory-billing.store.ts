@@ -1,0 +1,217 @@
+import { Injectable } from '@nestjs/common'
+import type {
+  BillingAccount,
+  BillingOutbox,
+  BillingOutboxMessage,
+  BillingOrganizationMembership,
+  BillingOrganizationMembershipStore,
+  BillingRepository,
+  EntitlementProjection,
+  InvoiceProjection,
+  SubscriptionProjection,
+  VerifiedBillingEvent,
+} from '../domain/billing.types'
+
+/** Development/test adapter. Replace with transactional database + outbox. */
+@Injectable()
+export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
+  readonly accountsByOrganization = new Map<string, BillingAccount>()
+  readonly accountsByCustomer = new Map<string, BillingAccount>()
+  readonly subscriptions = new Map<string, SubscriptionProjection>()
+  readonly invoices = new Map<string, InvoiceProjection>()
+  readonly entitlements = new Map<string, EntitlementProjection[]>()
+  readonly entitlementProjectionVersions = new Map<string, Date>()
+  readonly entitlementSnapshotTokens = new Map<string, number>()
+  readonly events = new Map<string, VerifiedBillingEvent>()
+  readonly processedEvents = new Set<string>()
+  readonly failedEvents = new Map<string, string>()
+  readonly messages: BillingOutboxMessage[] = []
+
+  findAccountByOrganization(
+    organizationId: string,
+  ): Promise<BillingAccount | null> {
+    return Promise.resolve(
+      this.accountsByOrganization.get(organizationId) ?? null,
+    )
+  }
+
+  findAccountByCustomer(customerId: string): Promise<BillingAccount | null> {
+    return Promise.resolve(this.accountsByCustomer.get(customerId) ?? null)
+  }
+
+  createAccount(input: BillingAccount): Promise<BillingAccount> {
+    const existing = this.accountsByOrganization.get(input.organizationId)
+    if (existing) return Promise.resolve(existing)
+    this.accountsByOrganization.set(input.organizationId, input)
+    this.accountsByCustomer.set(input.providerCustomerId, input)
+    return Promise.resolve(input)
+  }
+
+  getSummaryForOrganization(organizationId: string) {
+    const account = this.accountsByOrganization.get(organizationId) ?? null
+    if (!account) {
+      return Promise.resolve({
+        account,
+        entitlements: [],
+        invoices: [],
+        subscriptions: [],
+      })
+    }
+    return Promise.resolve({
+      account,
+      entitlements: this.entitlements.get(account.id) ?? [],
+      invoices: [...this.invoices.values()].filter(
+        (invoice) => invoice.billingAccountId === account.id,
+      ),
+      subscriptions: [...this.subscriptions.values()].filter(
+        (subscription) => subscription.billingAccountId === account.id,
+      ),
+    })
+  }
+
+  upsertInvoice(input: InvoiceProjection): Promise<void> {
+    const current = this.invoices.get(input.providerInvoiceId)
+    if (!current || current.providerUpdatedAt <= input.providerUpdatedAt) {
+      this.invoices.set(input.providerInvoiceId, input)
+    }
+    return Promise.resolve()
+  }
+
+  beginEntitlementSnapshot(billingAccountId: string): Promise<number> {
+    const token =
+      (this.entitlementSnapshotTokens.get(billingAccountId) ?? 0) + 1
+    this.entitlementSnapshotTokens.set(billingAccountId, token)
+    return Promise.resolve(token)
+  }
+
+  applySubscriptionSnapshot(
+    billingAccountId: string,
+    subscriptions: SubscriptionProjection[],
+    entitlements: EntitlementProjection[],
+    snapshotToken: number,
+  ): Promise<void> {
+    if (
+      this.entitlementSnapshotTokens.get(billingAccountId) !== snapshotToken
+    ) {
+      return Promise.resolve()
+    }
+    // There are no awaits below: once the current token is accepted, the
+    // development adapter mirrors the database transaction's all-or-nothing
+    // account snapshot update.
+    for (const subscription of subscriptions) {
+      const current = this.subscriptions.get(
+        subscription.providerSubscriptionId,
+      )
+      if (
+        !current ||
+        current.providerUpdatedAt <= subscription.providerUpdatedAt
+      ) {
+        this.subscriptions.set(
+          subscription.providerSubscriptionId,
+          subscription,
+        )
+      }
+    }
+    const nonSubscriptionEntitlements = (
+      this.entitlements.get(billingAccountId) ?? []
+    ).filter((entitlement) => entitlement.source !== 'subscription')
+    const nonSubscriptionFeatureKeys = new Set(
+      nonSubscriptionEntitlements.map((entitlement) => entitlement.featureKey),
+    )
+    this.entitlements.set(billingAccountId, [
+      ...nonSubscriptionEntitlements,
+      ...entitlements.filter(
+        (entitlement) =>
+          !nonSubscriptionFeatureKeys.has(entitlement.featureKey),
+      ),
+    ])
+    return Promise.resolve()
+  }
+
+  replaceEntitlements(
+    billingAccountId: string,
+    entitlements: EntitlementProjection[],
+    providerUpdatedAt: Date,
+  ): Promise<void> {
+    const currentVersion =
+      this.entitlementProjectionVersions.get(billingAccountId)
+    // Timestamps do not provide a deterministic stronger ordering key, so an
+    // equal event is deliberately ignored as well as an older one.
+    if (currentVersion && currentVersion >= providerUpdatedAt) {
+      return Promise.resolve()
+    }
+    this.entitlements.set(billingAccountId, entitlements)
+    this.entitlementProjectionVersions.set(billingAccountId, providerUpdatedAt)
+    this.entitlementSnapshotTokens.set(
+      billingAccountId,
+      (this.entitlementSnapshotTokens.get(billingAccountId) ?? 0) + 1,
+    )
+    return Promise.resolve()
+  }
+
+  insertEvent(event: VerifiedBillingEvent): Promise<boolean> {
+    if (this.events.has(event.id)) return Promise.resolve(false)
+    this.events.set(event.id, event)
+    return Promise.resolve(true)
+  }
+
+  recordWebhookReceipt(event: VerifiedBillingEvent): Promise<boolean> {
+    if (this.events.has(event.id)) return Promise.resolve(false)
+    this.events.set(event.id, event)
+    this.messages.push({ kind: 'billing.webhook', eventId: event.id })
+    return Promise.resolve(true)
+  }
+
+  getEvent(id: string): Promise<VerifiedBillingEvent | null> {
+    return Promise.resolve(this.events.get(id) ?? null)
+  }
+
+  markEventProcessed(id: string): Promise<void> {
+    this.processedEvents.add(id)
+    this.failedEvents.delete(id)
+    return Promise.resolve()
+  }
+
+  markEventFailed(id: string, error: string): Promise<void> {
+    this.failedEvents.set(id, error)
+    return Promise.resolve()
+  }
+
+  listAccounts(): Promise<BillingAccount[]> {
+    return Promise.resolve([...this.accountsByOrganization.values()])
+  }
+
+  enqueue(message: BillingOutboxMessage): Promise<void> {
+    this.messages.push(message)
+    return Promise.resolve()
+  }
+}
+
+export class InMemoryBillingOrganizationMembershipStore implements BillingOrganizationMembershipStore {
+  private readonly memberships = new Map<
+    string,
+    BillingOrganizationMembership
+  >()
+
+  constructor(memberships: readonly BillingOrganizationMembership[] = []) {
+    for (const membership of memberships) {
+      this.memberships.set(
+        this.key(membership.organizationId, membership.userId),
+        membership,
+      )
+    }
+  }
+
+  getMembership(
+    organizationId: string,
+    userId: string,
+  ): Promise<BillingOrganizationMembership | null> {
+    return Promise.resolve(
+      this.memberships.get(this.key(organizationId, userId)) ?? null,
+    )
+  }
+
+  private key(organizationId: string, userId: string): string {
+    return `${organizationId}:${userId}`
+  }
+}

@@ -19,14 +19,15 @@
     "start": "node dist/main.js"
   },
   "dependencies": {
-    "@aws-sdk/client-sqs": "catalog:",
     "@repo/billing": "workspace:*",
-    "@repo/database": "workspace:*"
+    "@repo/database": "workspace:*",
+    "pg": "catalog:"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "eslint": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
