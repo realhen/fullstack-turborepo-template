@@ -45,9 +45,34 @@ export class BillingProjectionProcessor {
     const account = await this.repository.findAccountByCustomer(customerId)
     if (!account) return
     const subscriptions = await this.provider.listSubscriptions(customerId)
+    // The list response is authoritative at retrieval time. Its wall-clock
+    // watermark intentionally supersedes the conservative migration baseline,
+    // while webhook projections continue to use provider event ordering.
+    const reconciledAt = new Date()
+    const entitlements = new Map<string, EntitlementProjection>()
     for (const subscription of subscriptions) {
-      await this.projectSubscription(account, subscription)
+      await this.upsertSubscription(
+        account,
+        subscription,
+        subscription.updatedAt,
+      )
+      const active = ['active', 'trialing'].includes(subscription.status)
+      for (const featureKey of parseEntitlementKeys(subscription.metadata)) {
+        const current = entitlements.get(featureKey)
+        entitlements.set(featureKey, {
+          active: current?.active || active,
+          billingAccountId: account.id,
+          featureKey,
+          providerUpdatedAt: reconciledAt,
+          source: 'subscription',
+        })
+      }
     }
+    await this.repository.replaceEntitlements(
+      account.id,
+      [...entitlements.values()],
+      reconciledAt,
+    )
   }
 
   private async projectSubscriptionEvent(
@@ -77,18 +102,7 @@ export class BillingProjectionProcessor {
     subscription: ProviderSubscription,
     providerUpdatedAt = subscription.updatedAt,
   ): Promise<void> {
-    await this.repository.upsertSubscription({
-      billingAccountId: account.id,
-      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
-      ...(subscription.currentPeriodEnd
-        ? { currentPeriodEnd: subscription.currentPeriodEnd }
-        : {}),
-      priceId: subscription.priceId,
-      providerSubscriptionId: subscription.id,
-      providerUpdatedAt,
-      quantity: subscription.quantity,
-      status: subscription.status,
-    })
+    await this.upsertSubscription(account, subscription, providerUpdatedAt)
     const active = ['active', 'trialing'].includes(subscription.status)
     const entitlementKeys = parseEntitlementKeys(subscription.metadata)
     await this.repository.replaceEntitlements(
@@ -102,6 +116,25 @@ export class BillingProjectionProcessor {
       })),
       providerUpdatedAt,
     )
+  }
+
+  private async upsertSubscription(
+    account: BillingAccount,
+    subscription: ProviderSubscription,
+    providerUpdatedAt: Date,
+  ): Promise<void> {
+    await this.repository.upsertSubscription({
+      billingAccountId: account.id,
+      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+      ...(subscription.currentPeriodEnd
+        ? { currentPeriodEnd: subscription.currentPeriodEnd }
+        : {}),
+      priceId: subscription.priceId,
+      providerSubscriptionId: subscription.id,
+      providerUpdatedAt,
+      quantity: subscription.quantity,
+      status: subscription.status,
+    })
   }
 
   private async projectInvoiceEvent(

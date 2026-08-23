@@ -235,4 +235,62 @@ describe('BillingService', () => {
     )
     expect(store.processedEvents.has('evt_subscription_stale')).toBe(true)
   })
+
+  it('reconciliation clears a baseline entitlement projection when the provider has no subscriptions', async () => {
+    const { processor, service, store } = setup()
+    await service.createPortal({
+      organizationId,
+      principal,
+      returnUrl: 'http://localhost:3000/settings/billing',
+    })
+    const account = store.accountsByOrganization.get(organizationId)
+    expect(account).toBeDefined()
+    if (!account) throw new Error('Expected billing account')
+    const baselineVersion = new Date(Date.now() - 60_000)
+    await store.replaceEntitlements(
+      account.id,
+      [
+        {
+          active: true,
+          billingAccountId: account.id,
+          featureKey: 'legacy-access',
+          providerUpdatedAt: baselineVersion,
+          source: 'subscription',
+        },
+      ],
+      baselineVersion,
+    )
+
+    await processor.reconcile(account.providerCustomerId)
+
+    expect(store.entitlements.get(account.id)).toEqual([])
+    expect(
+      store.entitlementProjectionVersions.get(account.id)?.getTime(),
+    ).toBeGreaterThan(baselineVersion.getTime())
+  })
+
+  it('reconciliation combines entitlement keys from every current subscription', async () => {
+    const { processor, service, store } = setup()
+    for (const planCode of ['starter-monthly', 'pro-monthly']) {
+      await service.createCheckout({
+        cancelUrl: 'http://localhost:3000/cancel',
+        organizationId,
+        planCode,
+        principal,
+        successUrl: 'http://localhost:3000/success',
+      })
+    }
+    const account = store.accountsByOrganization.get(organizationId)
+    expect(account).toBeDefined()
+    if (!account) throw new Error('Expected billing account')
+
+    await processor.reconcile(account.providerCustomerId)
+
+    expect(
+      store.entitlements
+        .get(account.id)
+        ?.map((entitlement) => entitlement.featureKey)
+        .sort(),
+    ).toEqual(['exports', 'projects'])
+  })
 })

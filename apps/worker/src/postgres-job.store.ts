@@ -21,7 +21,7 @@ type ClaimedRow = {
   payload: unknown
 }
 
-type ExhaustedRow = { attempts: number; id: string; last_error: string }
+type TerminalRow = { attempts: number; id: string; last_error: string }
 
 export class PostgresBillingJobStore implements BillingJobStore {
   constructor(private readonly pool: QueryPool) {}
@@ -35,8 +35,9 @@ export class PostgresBillingJobStore implements BillingJobStore {
     const leaseExpiresAt = new Date(
       input.now.getTime() + input.leaseForMilliseconds,
     )
-    const rows = await this.withTransaction(async (client) => {
-      const exhausted = await client.query<ExhaustedRow>(
+    const result = await this.withTransaction(async (client) => {
+      const terminal: TerminalRow[] = []
+      const exhausted = await client.query<TerminalRow>(
         `UPDATE billing_outbox
          SET dead_at = now(),
              last_error = COALESCE(
@@ -56,16 +57,7 @@ export class PostgresBillingJobStore implements BillingJobStore {
          RETURNING id::text, attempts, last_error`,
         [input.now, input.maxAttempts],
       )
-      for (const row of exhausted.rows) {
-        console.error(
-          JSON.stringify({
-            attempt: row.attempts,
-            error: row.last_error,
-            event: 'billing_job_dead',
-            jobId: row.id,
-          }),
-        )
-      }
+      terminal.push(...exhausted.rows)
       const result = await client.query<ClaimedRow>(
         `WITH candidates AS (
            SELECT id
@@ -92,24 +84,18 @@ export class PostgresBillingJobStore implements BillingJobStore {
       for (const row of result.rows) {
         const message = parseMessage(row.payload)
         if (!message) {
-          await client.query(
+          const malformed = await client.query<TerminalRow>(
             `UPDATE billing_outbox
              SET dead_at = now(),
                  last_error = 'Billing job has malformed payload',
                  lease_token = NULL,
                  lease_expires_at = NULL
              WHERE id = $1 AND lease_token = $2
-               AND completed_at IS NULL AND dead_at IS NULL`,
+               AND completed_at IS NULL AND dead_at IS NULL
+             RETURNING id::text, attempts, last_error`,
             [row.id, row.lease_token],
           )
-          console.error(
-            JSON.stringify({
-              attempt: row.attempts,
-              error: 'Billing job has malformed payload',
-              event: 'billing_job_dead',
-              jobId: row.id,
-            }),
-          )
+          terminal.push(...malformed.rows)
           continue
         }
         claimed.push({
@@ -119,9 +105,19 @@ export class PostgresBillingJobStore implements BillingJobStore {
           message,
         })
       }
-      return claimed
+      return { claimed, terminal }
     })
-    return rows
+    for (const row of result.terminal) {
+      console.error(
+        JSON.stringify({
+          attempt: row.attempts,
+          error: row.last_error,
+          event: 'billing_job_dead',
+          jobId: row.id,
+        }),
+      )
+    }
+    return result.claimed
   }
 
   async complete(input: ClaimedBillingJob): Promise<boolean> {

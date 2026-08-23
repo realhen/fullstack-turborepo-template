@@ -480,9 +480,9 @@ export class ApplicationStack extends cdk.Stack {
       targets: [apiService],
     })
 
-    // Schema consumers are rolled in dependency order. Operators run the
-    // migration task first, then ECS keeps API ahead of web and web ahead of
-    // the worker that calls the API's internal billing endpoint.
+    // Each API task gates startup on its same-image migration init container.
+    // After API stabilization, ECS keeps web ahead of the worker that calls
+    // the API's internal billing endpoint.
     ;(
       webService.service.node.defaultChild as ecs.CfnService
     ).addResourceDependency(apiService.node.defaultChild as ecs.CfnService)
