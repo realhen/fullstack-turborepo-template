@@ -105,8 +105,9 @@ describeDatabase('PostgresBillingStore integration', () => {
     const earlierToken = await store.beginEntitlementSnapshot(billingAccountId)
     const laterToken = await store.beginEntitlementSnapshot(billingAccountId)
     const version = new Date('2026-08-23T15:00:00.000Z')
-    await store.replaceEntitlementsFromSnapshot(
+    await store.applySubscriptionSnapshot(
       billingAccountId,
+      [],
       [
         {
           active: true,
@@ -118,8 +119,9 @@ describeDatabase('PostgresBillingStore integration', () => {
       ],
       laterToken,
     )
-    await store.replaceEntitlementsFromSnapshot(
+    await store.applySubscriptionSnapshot(
       billingAccountId,
+      [],
       [
         {
           active: true,
@@ -142,8 +144,9 @@ describeDatabase('PostgresBillingStore integration', () => {
   it('persists all grants from one account-wide subscription snapshot', async () => {
     const token = await store.beginEntitlementSnapshot(billingAccountId)
     const version = new Date('2026-08-23T16:00:00.000Z')
-    await store.replaceEntitlementsFromSnapshot(
+    await store.applySubscriptionSnapshot(
       billingAccountId,
+      [],
       [
         {
           active: true,
@@ -212,7 +215,15 @@ describeDatabase('PostgresBillingStore integration', () => {
     let releaseEarlierRead: (() => void) | undefined
     const earlierRead = new Promise<ProviderSubscription[]>((resolve) => {
       releaseEarlierRead = () =>
-        resolve([subscription('subscription-earlier', 'stale-earlier-grant')])
+        resolve([
+          subscription('subscription-race', 'stale-earlier-grant', {
+            priceId: 'price_stale',
+            status: 'canceled',
+            // Stripe maps each provider list result when it resolves. This
+            // later local timestamp must not let a stale token overwrite.
+            updatedAt: new Date('2026-08-23T18:00:00.000Z'),
+          }),
+        ])
     })
     let signalEarlierRead: (() => void) | undefined
     const earlierReadStarted = new Promise<void>((resolve) => {
@@ -227,7 +238,11 @@ describeDatabase('PostgresBillingStore integration', () => {
           return earlierRead
         }
         return Promise.resolve([
-          subscription('subscription-later', 'later-grant'),
+          subscription('subscription-race', 'later-grant', {
+            priceId: 'price_later',
+            status: 'active',
+            updatedAt: new Date('2026-08-23T17:00:00.000Z'),
+          }),
         ])
       }),
       store,
@@ -242,6 +257,15 @@ describeDatabase('PostgresBillingStore integration', () => {
     expect(
       (await store.getSummaryForOrganization(organizationId)).entitlements,
     ).toEqual([expect.objectContaining({ featureKey: 'later-grant' })])
+    expect(
+      (await store.getSummaryForOrganization(organizationId)).subscriptions,
+    ).toContainEqual(
+      expect.objectContaining({
+        priceId: 'price_later',
+        providerSubscriptionId: 'subscription-race',
+        status: 'active',
+      }),
+    )
   })
 
   it('preserves a non-subscription grant when a snapshot overlaps its feature key', async () => {
@@ -261,8 +285,9 @@ describeDatabase('PostgresBillingStore integration', () => {
     )
     const token = await store.beginEntitlementSnapshot(billingAccountId)
 
-    await store.replaceEntitlementsFromSnapshot(
+    await store.applySubscriptionSnapshot(
       billingAccountId,
+      [],
       [
         {
           active: true,
@@ -296,11 +321,7 @@ describeDatabase('PostgresBillingStore integration', () => {
     ])
 
     const emptyToken = await store.beginEntitlementSnapshot(billingAccountId)
-    await store.replaceEntitlementsFromSnapshot(
-      billingAccountId,
-      [],
-      emptyToken,
-    )
+    await store.applySubscriptionSnapshot(billingAccountId, [], [], emptyToken)
     expect(
       (await store.getSummaryForOrganization(organizationId)).entitlements,
     ).toEqual([
@@ -315,6 +336,7 @@ describeDatabase('PostgresBillingStore integration', () => {
 function subscription(
   id: string,
   entitlementKey: string,
+  overrides: Partial<ProviderSubscription> = {},
 ): ProviderSubscription {
   return {
     cancelAtPeriodEnd: false,
@@ -325,6 +347,7 @@ function subscription(
     quantity: 1,
     status: 'active',
     updatedAt: new Date('2026-08-23T17:00:00.000Z'),
+    ...overrides,
   }
 }
 

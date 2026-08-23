@@ -69,14 +69,6 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
     })
   }
 
-  upsertSubscription(input: SubscriptionProjection): Promise<void> {
-    const current = this.subscriptions.get(input.providerSubscriptionId)
-    if (!current || current.providerUpdatedAt <= input.providerUpdatedAt) {
-      this.subscriptions.set(input.providerSubscriptionId, input)
-    }
-    return Promise.resolve()
-  }
-
   upsertInvoice(input: InvoiceProjection): Promise<void> {
     const current = this.invoices.get(input.providerInvoiceId)
     if (!current || current.providerUpdatedAt <= input.providerUpdatedAt) {
@@ -92,8 +84,9 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
     return Promise.resolve(token)
   }
 
-  replaceEntitlementsFromSnapshot(
+  applySubscriptionSnapshot(
     billingAccountId: string,
+    subscriptions: SubscriptionProjection[],
     entitlements: EntitlementProjection[],
     snapshotToken: number,
   ): Promise<void> {
@@ -101,6 +94,23 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
       this.entitlementSnapshotTokens.get(billingAccountId) !== snapshotToken
     ) {
       return Promise.resolve()
+    }
+    // There are no awaits below: once the current token is accepted, the
+    // development adapter mirrors the database transaction's all-or-nothing
+    // account snapshot update.
+    for (const subscription of subscriptions) {
+      const current = this.subscriptions.get(
+        subscription.providerSubscriptionId,
+      )
+      if (
+        !current ||
+        current.providerUpdatedAt <= subscription.providerUpdatedAt
+      ) {
+        this.subscriptions.set(
+          subscription.providerSubscriptionId,
+          subscription,
+        )
+      }
     }
     const nonSubscriptionEntitlements = (
       this.entitlements.get(billingAccountId) ?? []

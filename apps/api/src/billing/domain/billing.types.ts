@@ -120,12 +120,13 @@ export interface BillingRepository {
   findAccountByCustomer(customerId: string): Promise<BillingAccount | null>
   createAccount(input: BillingAccount): Promise<BillingAccount>
   getSummaryForOrganization(organizationId: string): Promise<BillingSummary>
-  upsertSubscription(input: SubscriptionProjection): Promise<void>
   upsertInvoice(input: InvoiceProjection): Promise<void>
   /** Reserves a monotonic database ordering token before an authoritative read. */
   beginEntitlementSnapshot(billingAccountId: string): Promise<number>
-  replaceEntitlementsFromSnapshot(
+  /** Atomically applies a token-guarded account-wide provider snapshot. */
+  applySubscriptionSnapshot(
     billingAccountId: string,
+    subscriptions: SubscriptionProjection[],
     entitlements: EntitlementProjection[],
     snapshotToken: number,
   ): Promise<void>

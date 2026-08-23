@@ -7,6 +7,7 @@ import {
   type BillingRepository,
   type EntitlementProjection,
   type ProviderSubscription,
+  type SubscriptionProjection,
 } from '../domain/billing.types'
 
 @Injectable()
@@ -61,12 +62,9 @@ export class BillingProjectionProcessor {
     snapshotToken: number,
   ): Promise<void> {
     const entitlements = new Map<string, EntitlementProjection>()
+    const projectedSubscriptions: SubscriptionProjection[] = []
     for (const subscription of subscriptions) {
-      await this.upsertSubscription(
-        account,
-        subscription,
-        subscription.updatedAt,
-      )
+      projectedSubscriptions.push(subscriptionProjection(account, subscription))
       const active = ['active', 'trialing'].includes(subscription.status)
       for (const featureKey of parseEntitlementKeys(subscription.metadata)) {
         const current = entitlements.get(featureKey)
@@ -79,8 +77,9 @@ export class BillingProjectionProcessor {
         })
       }
     }
-    await this.repository.replaceEntitlementsFromSnapshot(
+    await this.repository.applySubscriptionSnapshot(
       account.id,
+      projectedSubscriptions,
       [...entitlements.values()],
       snapshotToken,
     )
@@ -105,25 +104,6 @@ export class BillingProjectionProcessor {
       subscriptions,
       snapshotToken,
     )
-  }
-
-  private async upsertSubscription(
-    account: BillingAccount,
-    subscription: ProviderSubscription,
-    providerUpdatedAt: Date,
-  ): Promise<void> {
-    await this.repository.upsertSubscription({
-      billingAccountId: account.id,
-      cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
-      ...(subscription.currentPeriodEnd
-        ? { currentPeriodEnd: subscription.currentPeriodEnd }
-        : {}),
-      priceId: subscription.priceId,
-      providerSubscriptionId: subscription.id,
-      providerUpdatedAt,
-      quantity: subscription.quantity,
-      status: subscription.status,
-    })
   }
 
   private async projectInvoiceEvent(
@@ -179,6 +159,24 @@ export class BillingProjectionProcessor {
       ]
     })
     await this.repository.replaceEntitlements(account.id, projected, createdAt)
+  }
+}
+
+function subscriptionProjection(
+  account: BillingAccount,
+  subscription: ProviderSubscription,
+): SubscriptionProjection {
+  return {
+    billingAccountId: account.id,
+    cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+    ...(subscription.currentPeriodEnd
+      ? { currentPeriodEnd: subscription.currentPeriodEnd }
+      : {}),
+    priceId: subscription.priceId,
+    providerSubscriptionId: subscription.id,
+    providerUpdatedAt: subscription.updatedAt,
+    quantity: subscription.quantity,
+    status: subscription.status,
   }
 }
 

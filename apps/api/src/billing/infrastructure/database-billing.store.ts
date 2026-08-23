@@ -96,33 +96,6 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
     }
   }
 
-  async upsertSubscription(input: SubscriptionProjection): Promise<void> {
-    await this.pool.query(
-      `INSERT INTO billing_subscriptions
-        (billing_account_id, provider_subscription_id, status, price_id, quantity,
-         cancel_at_period_end, current_period_end, provider_updated_at)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-       ON CONFLICT (provider_subscription_id) DO UPDATE SET
-         status = EXCLUDED.status, price_id = EXCLUDED.price_id,
-         quantity = EXCLUDED.quantity,
-         cancel_at_period_end = EXCLUDED.cancel_at_period_end,
-         current_period_end = EXCLUDED.current_period_end,
-         provider_updated_at = EXCLUDED.provider_updated_at,
-         updated_at = now()
-       WHERE billing_subscriptions.provider_updated_at <= EXCLUDED.provider_updated_at`,
-      [
-        input.billingAccountId,
-        input.providerSubscriptionId,
-        input.status,
-        input.priceId,
-        input.quantity,
-        input.cancelAtPeriodEnd,
-        input.currentPeriodEnd ?? null,
-        input.providerUpdatedAt,
-      ],
-    )
-  }
-
   async upsertInvoice(input: InvoiceProjection): Promise<void> {
     await this.pool.query(
       `INSERT INTO billing_invoices
@@ -178,8 +151,9 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
     })
   }
 
-  async replaceEntitlementsFromSnapshot(
+  async applySubscriptionSnapshot(
     billingAccountId: string,
+    subscriptions: SubscriptionProjection[],
     entitlements: EntitlementProjection[],
     snapshotToken: number,
   ): Promise<void> {
@@ -195,6 +169,9 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
         [billingAccountId],
       )
       if (Number(version.rows[0]?.ordering_token) !== snapshotToken) return
+      for (const subscription of subscriptions) {
+        await upsertSubscriptionRow(client, subscription)
+      }
       await replaceSubscriptionEntitlementRows(
         client,
         billingAccountId,
@@ -425,6 +402,36 @@ type EntitlementRow = {
   feature_key: string
   provider_updated_at: Date
   source: EntitlementProjection['source']
+}
+
+async function upsertSubscriptionRow(
+  client: QueryClient,
+  input: SubscriptionProjection,
+): Promise<void> {
+  await client.query(
+    `INSERT INTO billing_subscriptions
+      (billing_account_id, provider_subscription_id, status, price_id, quantity,
+       cancel_at_period_end, current_period_end, provider_updated_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+     ON CONFLICT (provider_subscription_id) DO UPDATE SET
+       status = EXCLUDED.status, price_id = EXCLUDED.price_id,
+       quantity = EXCLUDED.quantity,
+       cancel_at_period_end = EXCLUDED.cancel_at_period_end,
+       current_period_end = EXCLUDED.current_period_end,
+       provider_updated_at = EXCLUDED.provider_updated_at,
+       updated_at = now()
+     WHERE billing_subscriptions.provider_updated_at <= EXCLUDED.provider_updated_at`,
+    [
+      input.billingAccountId,
+      input.providerSubscriptionId,
+      input.status,
+      input.priceId,
+      input.quantity,
+      input.cancelAtPeriodEnd,
+      input.currentPeriodEnd ?? null,
+      input.providerUpdatedAt,
+    ],
+  )
 }
 
 async function replaceEntitlementRows(

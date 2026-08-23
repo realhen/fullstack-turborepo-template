@@ -97,8 +97,19 @@ describe('InMemoryBillingStore entitlements', () => {
     const earlier = await store.beginEntitlementSnapshot(accountId)
     const later = await store.beginEntitlementSnapshot(accountId)
     const version = new Date('2026-08-23T12:00:00.000Z')
-    await store.replaceEntitlementsFromSnapshot(
+    await store.applySubscriptionSnapshot(
       accountId,
+      [
+        {
+          billingAccountId: accountId,
+          cancelAtPeriodEnd: false,
+          priceId: 'price-later',
+          providerSubscriptionId: 'subscription-race',
+          providerUpdatedAt: version,
+          quantity: 1,
+          status: 'active',
+        },
+      ],
       [
         {
           active: true,
@@ -110,8 +121,19 @@ describe('InMemoryBillingStore entitlements', () => {
       ],
       later,
     )
-    await store.replaceEntitlementsFromSnapshot(
+    await store.applySubscriptionSnapshot(
       accountId,
+      [
+        {
+          billingAccountId: accountId,
+          cancelAtPeriodEnd: false,
+          priceId: 'price-earlier-but-locally-newer',
+          providerSubscriptionId: 'subscription-race',
+          providerUpdatedAt: new Date('2026-08-23T13:00:00.000Z'),
+          quantity: 1,
+          status: 'canceled',
+        },
+      ],
       [
         {
           active: true,
@@ -127,6 +149,12 @@ describe('InMemoryBillingStore entitlements', () => {
     expect(store.entitlements.get(accountId)).toEqual([
       expect.objectContaining({ featureKey: 'later' }),
     ])
+    expect(store.subscriptions.get('subscription-race')).toEqual(
+      expect.objectContaining({
+        priceId: 'price-later',
+        status: 'active',
+      }),
+    )
   })
 
   it('clears only subscription-derived grants for an empty snapshot', async () => {
@@ -155,7 +183,7 @@ describe('InMemoryBillingStore entitlements', () => {
     )
     const token = await store.beginEntitlementSnapshot(accountId)
 
-    await store.replaceEntitlementsFromSnapshot(accountId, [], token)
+    await store.applySubscriptionSnapshot(accountId, [], [], token)
 
     expect(store.entitlements.get(accountId)).toEqual([
       expect.objectContaining({
@@ -184,8 +212,9 @@ describe('InMemoryBillingStore entitlements', () => {
     )
     const token = await store.beginEntitlementSnapshot(accountId)
 
-    await store.replaceEntitlementsFromSnapshot(
+    await store.applySubscriptionSnapshot(
       accountId,
+      [],
       [
         {
           active: true,
@@ -217,7 +246,7 @@ describe('InMemoryBillingStore entitlements', () => {
     ])
 
     const emptyToken = await store.beginEntitlementSnapshot(accountId)
-    await store.replaceEntitlementsFromSnapshot(accountId, [], emptyToken)
+    await store.applySubscriptionSnapshot(accountId, [], [], emptyToken)
     expect(store.entitlements.get(accountId)).toEqual([
       expect.objectContaining({
         featureKey: 'shared-grant',
