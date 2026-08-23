@@ -128,11 +128,16 @@ export class StripeBillingProvider implements BillingProvider {
   }
 
   async listSubscriptions(customerId: string): Promise<ProviderSubscription[]> {
-    const subscriptions = await this.callStripe(() =>
-      this.stripe.subscriptions
-        .list({ customer: customerId, status: 'all' })
-        .autoPagingToArray({ limit: 10_000 }),
-    )
+    const subscriptions = await this.callStripe(async () => {
+      const allSubscriptions: Stripe.Subscription[] = []
+      for await (const subscription of this.stripe.subscriptions.list({
+        customer: customerId,
+        status: 'all',
+      })) {
+        allSubscriptions.push(subscription)
+      }
+      return allSubscriptions
+    })
     return subscriptions.map(toSubscription)
   }
 

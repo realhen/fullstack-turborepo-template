@@ -46,25 +46,32 @@ describe('StripeBillingProvider webhook verification', () => {
     ).toThrow(BadRequestException)
   })
 
-  it('uses Stripe auto-pagination when listing all customer subscriptions', async () => {
-    const autoPagingToArray = vi.fn().mockResolvedValue([
-      {
-        cancel_at_period_end: false,
-        customer: 'cus_1',
-        id: 'sub_1',
-        items: { data: [{ price: { id: 'price_1' }, quantity: 1 }] },
-        metadata: {},
-        status: 'active',
+  it('exhaustively iterates every Stripe subscription page', async () => {
+    const list = vi.fn().mockReturnValue({
+      async *[Symbol.asyncIterator]() {
+        yield await Promise.resolve(subscription('sub_1'))
+        yield await Promise.resolve(subscription('sub_2'))
       },
-    ])
-    const list = vi.fn().mockReturnValue({ autoPagingToArray })
+    })
     const provider = new StripeBillingProvider('sk_test_unused', 'whsec_test', {
       subscriptions: { list },
     } as unknown as Stripe)
 
     await expect(provider.listSubscriptions('cus_1')).resolves.toEqual([
       expect.objectContaining({ id: 'sub_1' }),
+      expect.objectContaining({ id: 'sub_2' }),
     ])
-    expect(autoPagingToArray).toHaveBeenCalledWith({ limit: 10_000 })
+    expect(list).toHaveBeenCalledWith({ customer: 'cus_1', status: 'all' })
   })
 })
+
+function subscription(id: string) {
+  return {
+    cancel_at_period_end: false,
+    customer: 'cus_1',
+    id,
+    items: { data: [{ price: { id: 'price_1' }, quantity: 1 }] },
+    metadata: {},
+    status: 'active',
+  }
+}

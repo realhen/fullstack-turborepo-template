@@ -463,10 +463,13 @@ async function replaceSubscriptionEntitlementRows(
     [billingAccountId],
   )
   for (const entitlement of entitlements) {
+    // A provider/manual row retained above is authoritative for an overlapping
+    // feature key, and the table's unique key guarantees one effective grant.
     await client.query(
       `INSERT INTO billing_entitlements
         (billing_account_id, feature_key, active, source, provider_updated_at)
-       VALUES ($1, $2, $3, $4, $5)`,
+       VALUES ($1, $2, $3, $4, $5)
+       ON CONFLICT (billing_account_id, feature_key) DO NOTHING`,
       [
         billingAccountId,
         entitlement.featureKey,

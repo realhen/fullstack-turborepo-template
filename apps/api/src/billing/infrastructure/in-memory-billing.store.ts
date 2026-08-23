@@ -105,9 +105,15 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
     const nonSubscriptionEntitlements = (
       this.entitlements.get(billingAccountId) ?? []
     ).filter((entitlement) => entitlement.source !== 'subscription')
+    const nonSubscriptionFeatureKeys = new Set(
+      nonSubscriptionEntitlements.map((entitlement) => entitlement.featureKey),
+    )
     this.entitlements.set(billingAccountId, [
       ...nonSubscriptionEntitlements,
-      ...entitlements,
+      ...entitlements.filter(
+        (entitlement) =>
+          !nonSubscriptionFeatureKeys.has(entitlement.featureKey),
+      ),
     ])
     return Promise.resolve()
   }

@@ -164,4 +164,65 @@ describe('InMemoryBillingStore entitlements', () => {
       }),
     ])
   })
+
+  it('preserves a non-subscription grant when a snapshot has the same feature key', async () => {
+    const store = new InMemoryBillingStore()
+    const accountId = 'billing-account-overlapping-source'
+    const version = new Date('2026-08-23T14:00:00.000Z')
+    await store.replaceEntitlements(
+      accountId,
+      [
+        {
+          active: true,
+          billingAccountId: accountId,
+          featureKey: 'shared-grant',
+          providerUpdatedAt: version,
+          source: 'provider_entitlement',
+        },
+      ],
+      version,
+    )
+    const token = await store.beginEntitlementSnapshot(accountId)
+
+    await store.replaceEntitlementsFromSnapshot(
+      accountId,
+      [
+        {
+          active: true,
+          billingAccountId: accountId,
+          featureKey: 'shared-grant',
+          providerUpdatedAt: version,
+          source: 'subscription',
+        },
+        {
+          active: true,
+          billingAccountId: accountId,
+          featureKey: 'subscription-only-grant',
+          providerUpdatedAt: version,
+          source: 'subscription',
+        },
+      ],
+      token,
+    )
+
+    expect(store.entitlements.get(accountId)).toEqual([
+      expect.objectContaining({
+        featureKey: 'shared-grant',
+        source: 'provider_entitlement',
+      }),
+      expect.objectContaining({
+        featureKey: 'subscription-only-grant',
+        source: 'subscription',
+      }),
+    ])
+
+    const emptyToken = await store.beginEntitlementSnapshot(accountId)
+    await store.replaceEntitlementsFromSnapshot(accountId, [], emptyToken)
+    expect(store.entitlements.get(accountId)).toEqual([
+      expect.objectContaining({
+        featureKey: 'shared-grant',
+        source: 'provider_entitlement',
+      }),
+    ])
+  })
 })

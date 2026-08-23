@@ -243,6 +243,73 @@ describeDatabase('PostgresBillingStore integration', () => {
       (await store.getSummaryForOrganization(organizationId)).entitlements,
     ).toEqual([expect.objectContaining({ featureKey: 'later-grant' })])
   })
+
+  it('preserves a non-subscription grant when a snapshot overlaps its feature key', async () => {
+    const version = new Date('2026-08-23T18:00:00.000Z')
+    await store.replaceEntitlements(
+      billingAccountId,
+      [
+        {
+          active: true,
+          billingAccountId,
+          featureKey: 'provider-shared-grant',
+          providerUpdatedAt: version,
+          source: 'provider_entitlement',
+        },
+      ],
+      version,
+    )
+    const token = await store.beginEntitlementSnapshot(billingAccountId)
+
+    await store.replaceEntitlementsFromSnapshot(
+      billingAccountId,
+      [
+        {
+          active: true,
+          billingAccountId,
+          featureKey: 'provider-shared-grant',
+          providerUpdatedAt: version,
+          source: 'subscription',
+        },
+        {
+          active: true,
+          billingAccountId,
+          featureKey: 'subscription-only-grant',
+          providerUpdatedAt: version,
+          source: 'subscription',
+        },
+      ],
+      token,
+    )
+
+    expect(
+      (await store.getSummaryForOrganization(organizationId)).entitlements,
+    ).toEqual([
+      expect.objectContaining({
+        featureKey: 'provider-shared-grant',
+        source: 'provider_entitlement',
+      }),
+      expect.objectContaining({
+        featureKey: 'subscription-only-grant',
+        source: 'subscription',
+      }),
+    ])
+
+    const emptyToken = await store.beginEntitlementSnapshot(billingAccountId)
+    await store.replaceEntitlementsFromSnapshot(
+      billingAccountId,
+      [],
+      emptyToken,
+    )
+    expect(
+      (await store.getSummaryForOrganization(organizationId)).entitlements,
+    ).toEqual([
+      expect.objectContaining({
+        featureKey: 'provider-shared-grant',
+        source: 'provider_entitlement',
+      }),
+    ])
+  })
 })
 
 function subscription(
