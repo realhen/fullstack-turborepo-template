@@ -48,7 +48,7 @@
 - Produces a Cloud Map namespace named `${projectName}.local` and a public hosted zone named exactly `domainName`.
 - API and worker tasks consume the foundation security groups, avoiding service-to-service stack references.
 
-- [ ] **Step 1: Write failing foundation tests**
+- [x] **Step 1: Write failing foundation tests**
 
 Create assertions that instantiate `FoundationStack` and require one VPC, one ECS cluster, one RDS instance, the API/worker/database security groups, one worker secret, one SNS topic, one Route 53 hosted zone, and zero ECS services or load balancers. Preserve the existing RDS assertions:
 
@@ -67,13 +67,13 @@ template.resourceCountIs('AWS::Route53::HostedZone', 1)
 
 Test valid and invalid project names through `validateProjectName`.
 
-- [ ] **Step 2: Run the focused test and observe failure**
+- [x] **Step 2: Run the focused test and observe failure**
 
 Run: `pnpm --filter @repo/infra test -- foundation-stack.test.ts`
 
 Expected: FAIL because the foundation modules do not exist.
 
-- [ ] **Step 3: Implement shared validation and foundation resources**
+- [x] **Step 3: Implement shared validation and foundation resources**
 
 Move the name regex and constant from `application-stack.ts` into `config.ts`. Build the VPC/cluster/namespace in `network.ts`; create dedicated API, worker, and database security groups plus worker-to-API and both service-to-database ingress in `access-control.ts`; create the RDS instance and rotation in `database.ts`; create the delegated public hosted zone in `domain.ts`; and create the shared worker secret and alarm topic/subscription in `shared-resources.ts`.
 
@@ -94,13 +94,13 @@ export class FoundationStack extends cdk.Stack {
 
 Add foundation outputs for hosted-zone name servers, database secret ARN, cluster name, private subnet IDs, and service security-group IDs.
 
-- [ ] **Step 4: Run foundation tests**
+- [x] **Step 4: Run foundation tests**
 
 Run: `pnpm --filter @repo/infra test -- foundation-stack.test.ts`
 
 Expected: PASS with no ECS service or ALB in the foundation template.
 
-- [ ] **Step 5: Commit the foundation**
+- [x] **Step 5: Commit the foundation**
 
 ```sh
 git add apps/infra/lib/config.ts apps/infra/lib/foundation apps/infra/test/foundation-stack.test.ts
@@ -122,7 +122,7 @@ git commit -m "refactor(infra): add shared foundation stack"
 - `FargateServiceProps` accepts foundation `cluster` and `securityGroups`, primary `container` options, optional dependency containers, scaling limits, Cloud Map name, and optional `publicLoadBalancer` certificate/port/health-check settings.
 - The construct contains no API, worker, PostgreSQL, billing, auth, DNS, WAF, or alarm policy.
 
-- [ ] **Step 1: Write failing reusable-construct tests**
+- [x] **Step 1: Write failing reusable-construct tests**
 
 Create a minimal test stack with a VPC and cluster. Instantiate one internal service and one public service. Assert both use x86_64 Linux task definitions, circuit breakers, ECS Exec, and scaling; assert only the public service creates an ALB, HTTP redirect listener, HTTPS listener, and target group.
 
@@ -137,13 +137,13 @@ template.hasResourceProperties('AWS::ECS::Service', {
 })
 ```
 
-- [ ] **Step 2: Run the focused test and observe failure**
+- [x] **Step 2: Run the focused test and observe failure**
 
 Run: `pnpm --filter @repo/infra test -- fargate-service.test.ts`
 
 Expected: FAIL because the constructs do not exist.
 
-- [ ] **Step 3: Implement the shared constructs**
+- [x] **Step 3: Implement the shared constructs**
 
 Centralize the current repository-root calculation, exclusions, ignore mode, platform, Dockerfile, and target in `container-image.ts`.
 
@@ -165,13 +165,13 @@ export interface PublicLoadBalancerOptions {
 }
 ```
 
-- [ ] **Step 4: Run reusable-construct tests and typecheck**
+- [x] **Step 4: Run reusable-construct tests and typecheck**
 
 Run: `pnpm --filter @repo/infra test -- fargate-service.test.ts && pnpm --filter @repo/infra typecheck`
 
 Expected: PASS; TypeScript accepts both internal and public configurations.
 
-- [ ] **Step 5: Commit the reusable constructs**
+- [x] **Step 5: Commit the reusable constructs**
 
 ```sh
 git add apps/infra/lib/constructs apps/infra/test/fargate-service.test.ts
@@ -199,7 +199,7 @@ git commit -m "refactor(infra): add reusable Fargate service construct"
 - `createApiAccessControl(...)` attaches the existing WAF rules to the API ALB.
 - `createApiMonitoring(...)` creates exactly two alarms and one API dashboard.
 
-- [ ] **Step 1: Write failing API stack tests**
+- [x] **Step 1: Write failing API stack tests**
 
 Port the API-specific assertions from `application-stack.test.ts` and require:
 
@@ -213,13 +213,13 @@ Port the API-specific assertions from `application-stack.test.ts` and require:
 
 Add tests for incomplete OIDC configuration and missing `webOrigin`/`domainName` validation at the composition boundary.
 
-- [ ] **Step 2: Run the API test and observe failure**
+- [x] **Step 2: Run the API test and observe failure**
 
 Run: `pnpm --filter @repo/infra test -- api-stack.test.ts`
 
 Expected: FAIL because `ApiStack` does not exist.
 
-- [ ] **Step 3: Implement API database and domain modules**
+- [x] **Step 3: Implement API database and domain modules**
 
 Move the PostgreSQL environment/secrets and migration task/init-container configuration into `api/database.ts`. Create the regional DNS-validated ACM certificate and the ALB alias in `api/domain.ts` using the foundation hosted zone.
 
@@ -237,19 +237,19 @@ The API environment must include:
 }
 ```
 
-- [ ] **Step 4: Implement API service, access control, and monitoring**
+- [x] **Step 4: Implement API service, access control, and monitoring**
 
 Build the API `aws-runner` asset, add the migration init container with `SUCCESS` dependency, invoke the shared construct with public HTTPS ingress, and create the standalone migration task. Recreate the WAF rate and AWS managed rules. Recreate the API target-5xx and database CPU alarms against the shared SNS topic, plus the API/ALB/database dashboard.
 
 The ALB default target is the API on port 3001; remove the old web service and `/api/*` listener-rule indirection.
 
-- [ ] **Step 5: Compose `ApiStack` and run tests**
+- [x] **Step 5: Compose `ApiStack` and run tests**
 
 Run: `pnpm --filter @repo/infra test -- api-stack.test.ts && pnpm --filter @repo/infra typecheck`
 
 Expected: PASS with one API service, two API-owned task definitions, no worker task, and no web asset.
 
-- [ ] **Step 6: Commit the API stack**
+- [x] **Step 6: Commit the API stack**
 
 ```sh
 git add apps/infra/lib/api apps/infra/test/api-stack.test.ts
@@ -275,7 +275,7 @@ git commit -m "refactor(infra): split API deployment stack"
 - `createWorkerMonitoring(...)` creates one worker operations dashboard and no new alarms.
 - Worker files import no API-stack module or API-stack resource.
 
-- [ ] **Step 1: Write failing worker stack tests**
+- [x] **Step 1: Write failing worker stack tests**
 
 Require one task definition, one ECS service with desired count one, scaling range one to four, one `aws-runner` worker Docker asset, and the exact existing billing/database environment. Assert zero ALBs, listeners, target groups, WAFs, certificates, hosted zones, RDS instances, and API containers.
 
@@ -288,17 +288,17 @@ Assert the URL remains:
 }
 ```
 
-- [ ] **Step 2: Run the worker test and observe failure**
+- [x] **Step 2: Run the worker test and observe failure**
 
 Run: `pnpm --filter @repo/infra test -- worker-stack.test.ts`
 
 Expected: FAIL because `WorkerStack` does not exist.
 
-- [ ] **Step 3: Implement worker modules**
+- [x] **Step 3: Implement worker modules**
 
 Create the worker-specific PostgreSQL environment and secret maps in `worker/database.ts`. Use the shared image helper with `apps/worker/Dockerfile` and `aws-runner`. Use the shared Fargate construct with one desired task, CPU autoscaling from one to four, no port, no Cloud Map registration, and no public load balancer. Bind the foundation worker secret and worker security group. Keep the access-control module focused on worker-specific network bindings and create a CPU/database visibility dashboard without adding unapproved alarm policy.
 
-- [ ] **Step 4: Run worker tests and dependency inspection**
+- [x] **Step 4: Run worker tests and dependency inspection**
 
 Run: `pnpm --filter @repo/infra test -- worker-stack.test.ts && pnpm --filter @repo/infra typecheck`
 
@@ -308,7 +308,7 @@ Inspect: `rg -n "lib/api|ApiStack" apps/infra/lib/worker`
 
 Expected: no matches.
 
-- [ ] **Step 5: Commit the worker stack**
+- [x] **Step 5: Commit the worker stack**
 
 ```sh
 git add apps/infra/lib/worker apps/infra/test/worker-stack.test.ts
@@ -336,7 +336,7 @@ git commit -m "refactor(infra): split worker deployment stack"
 - App context requires `domainName` and `webOrigin`; `projectName` defaults to `fullstack-app` through `cdk.json`.
 - API and worker both depend on foundation, and neither depends on the other.
 
-- [ ] **Step 1: Write failing app-composition tests**
+- [x] **Step 1: Write failing app-composition tests**
 
 Extract context-to-props parsing into exported side-effect-free functions in `app.ts` or `lib/config.ts` so tests can verify required context and partial OIDC failure without executing the CLI. Instantiate the app and assert stack IDs and dependencies:
 
@@ -347,13 +347,13 @@ expect(apiStack.dependencies).not.toContain(workerStack)
 expect(workerStack.dependencies).not.toContain(apiStack)
 ```
 
-- [ ] **Step 2: Run the app test and observe failure**
+- [x] **Step 2: Run the app test and observe failure**
 
 Run: `pnpm --filter @repo/infra test -- app.test.ts`
 
 Expected: FAIL because `app.ts` and the composition interface do not exist.
 
-- [ ] **Step 3: Implement `app.ts` and tooling changes**
+- [x] **Step 3: Implement `app.ts` and tooling changes**
 
 Read context, validate domain/web origin/OIDC settings, instantiate foundation first, pass only foundation resources to API and worker, add explicit foundation dependencies, and call `app.synth()`.
 
@@ -367,7 +367,7 @@ Update:
 
 Change infra lint inputs to `eslint app.ts lib test --max-warnings=0`; change TypeScript includes to `app.ts`, `lib/**/*.ts`, and `test/**/*.ts`.
 
-- [ ] **Step 4: Remove legacy files and run the full infra suite**
+- [x] **Step 4: Remove legacy files and run the full infra suite**
 
 Delete the old entrypoint, monolithic stack, and monolithic test only after the new app tests pass.
 
@@ -375,7 +375,7 @@ Run: `pnpm --filter @repo/infra test && pnpm --filter @repo/infra lint && pnpm -
 
 Expected: all commands pass and no source imports `application-stack` or `bin/infra`.
 
-- [ ] **Step 5: Verify individual and all-stack synthesis**
+- [x] **Step 5: Verify individual and all-stack synthesis**
 
 Run:
 
@@ -388,7 +388,7 @@ pnpm --filter @repo/infra synth -c domainName=api.fullstack-template.com -c webO
 
 Expected: each named stack synthesizes; `--all` contains three stack templates and does not access live AWS APIs.
 
-- [ ] **Step 6: Commit app composition and legacy removal**
+- [x] **Step 6: Commit app composition and legacy removal**
 
 ```sh
 git add apps/infra/app.ts apps/infra/cdk.json apps/infra/package.json apps/infra/tsconfig.json apps/infra/bin/infra.ts apps/infra/lib/application-stack.ts apps/infra/test
@@ -410,7 +410,7 @@ git commit -m "refactor(infra): compose independent CDK stacks"
 - CI synthesis supplies only `domainName` and `webOrigin`; it no longer supplies certificate or existing hosted-zone context.
 - Documentation does not claim CodePipeline or automatic production deployment exists.
 
-- [ ] **Step 1: Update CI synthesis and environment documentation**
+- [x] **Step 1: Update CI synthesis and environment documentation**
 
 Replace the production synthesis command with:
 
@@ -422,7 +422,7 @@ pnpm --filter @repo/infra synth \
 
 Document `DOMAIN_NAME`, `WEB_ORIGIN`, optional Stripe/OIDC/alarm values, and the fact that CDK context is passed with `-c` rather than sourced automatically from `.env.example`.
 
-- [ ] **Step 2: Rewrite the README AWS deployment section**
+- [x] **Step 2: Rewrite the README AWS deployment section**
 
 Explain:
 
@@ -434,7 +434,7 @@ Explain:
 
 State clearly that the frontend deploys on Vercel and the backend ALB serves only the API.
 
-- [ ] **Step 3: Run documentation and CI-config checks**
+- [x] **Step 3: Run documentation and CI-config checks**
 
 Run: `pnpm exec prettier --check README.md .github/workflows/ci.yml docs/superpowers/specs/2026-08-23-independent-cdk-service-stacks-design.md`
 
@@ -444,7 +444,7 @@ Inspect: `rg -n "certificateArn|hostedZoneId|hostedZoneName|AWS-hosted web|CodeP
 
 Expected: removed CDK inputs appear nowhere in active configuration; CodePipeline appears only in an explicit non-goal/future statement.
 
-- [ ] **Step 4: Commit documentation and CI changes**
+- [x] **Step 4: Commit documentation and CI changes**
 
 ```sh
 git add README.md apps/infra/.env.example .github/workflows/ci.yml docs/superpowers/specs/2026-08-23-independent-cdk-service-stacks-design.md
@@ -462,7 +462,7 @@ git commit -m "docs: explain independent AWS service deployments"
 - The final diff implements the approved spec without unrelated application changes.
 - Verification uses the repository's Node 24.6.0 and pnpm 11.22.0 CI-equivalent toolchain if the host versions differ.
 
-- [ ] **Step 1: Run focused infrastructure verification**
+- [x] **Step 1: Run focused infrastructure verification**
 
 Run:
 
@@ -478,7 +478,7 @@ pnpm --filter @repo/infra synth \
 
 Expected: every command exits zero and synthesis produces exactly three stacks.
 
-- [ ] **Step 2: Run repository-required gates**
+- [x] **Step 2: Run repository-required gates**
 
 Run:
 
@@ -490,7 +490,7 @@ git diff --check
 
 Expected: all commands exit zero.
 
-- [ ] **Step 3: Run the faithful uncached CI-equivalent gate**
+- [x] **Step 3: Run the faithful uncached CI-equivalent gate**
 
 Run:
 
@@ -501,7 +501,7 @@ npx --yes --package=node@24.6.0 --package=pnpm@11.22.0 --call \
 
 Expected: every Turbo task passes without cache-dependent success.
 
-- [ ] **Step 4: Inspect scope and synthesized ownership**
+- [x] **Step 4: Inspect scope and synthesized ownership**
 
 Run:
 
@@ -514,6 +514,6 @@ rg -n "WebService|apps/web/Dockerfile|application-stack|bin/infra" apps/infra .g
 
 Expected: only approved infrastructure, CI, documentation, spec, and plan files changed; legacy AWS web and monolithic-stack references are absent from active code.
 
-- [ ] **Step 5: Prepare the audit evidence**
+- [x] **Step 5: Prepare the audit evidence**
 
 Record exact command results, the accumulated base/head revisions, changed-file list, three-stack synthesis evidence, and any residual deployment caveats. Do not alter files after capturing evidence unless verification is rerun and the prior audit verdict is discarded.
