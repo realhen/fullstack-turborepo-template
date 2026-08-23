@@ -2,7 +2,6 @@ import type { Server } from 'node:http'
 import type { NestExpressApplication } from '@nestjs/platform-express'
 import request from 'supertest'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { createApp } from '../src/bootstrap'
 
 describe('API', () => {
   let app: NestExpressApplication
@@ -17,6 +16,7 @@ describe('API', () => {
     process.env.AUTH_LOCAL_SCOPES = 'profile:read'
     process.env.AUTH_LOCAL_PROJECT_ID = 'test-project'
     process.env.AUTH_LOCAL_PROJECT_NAME = 'Test project'
+    const { createApp } = await import('../src/bootstrap')
     app = await createApp()
     await app.init()
   })
@@ -49,12 +49,12 @@ describe('API', () => {
 
   it('rate limits API requests but not load balancer health checks', async () => {
     const server = app.getHttpServer() as Server
-    const apiResponses = await Promise.all(
-      Array.from({ length: 101 }, () => request(server).get('/api/v1/')),
-    )
-    const healthResponses = await Promise.all(
-      Array.from({ length: 101 }, () => request(server).get('/api/v1/health')),
-    )
+    const apiResponses = []
+    const healthResponses = []
+    for (let index = 0; index < 101; index += 1) {
+      apiResponses.push(await request(server).get('/api/v1/'))
+      healthResponses.push(await request(server).get('/api/v1/health'))
+    }
 
     expect(
       apiResponses.filter((response) => response.status === 429),
