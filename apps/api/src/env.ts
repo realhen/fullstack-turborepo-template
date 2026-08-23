@@ -24,7 +24,10 @@ const envSchema = z
     PGHOST: z.string().min(1).optional(),
     PGPASSWORD: z.string().min(1).optional(),
     PGPORT: z.coerce.number().int().min(1).optional(),
-    PGSSLMODE: z.enum(['disable', 'require']).optional(),
+    PGSSLMODE: z
+      .enum(['disable', 'require', 'verify-ca', 'verify-full'])
+      .optional(),
+    PGSSLROOTCERT: z.string().min(1).optional(),
     PGUSER: z.string().min(1).optional(),
     AUTH_MODE: z.enum(['disabled', 'local', 'oidc']).default('disabled'),
     AUTH_LOCAL_TOKEN: z.string().optional(),

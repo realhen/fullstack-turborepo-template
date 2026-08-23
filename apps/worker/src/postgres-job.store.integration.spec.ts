@@ -145,6 +145,34 @@ describeDatabase('PostgresBillingJobStore integration', () => {
     expect(row?.last_error).toContain('lease expired')
   })
 
+  it('terminally dead-letters an exhausted unleased job', async () => {
+    const id = await insertJob()
+    await pool.query(
+      `UPDATE billing_outbox
+       SET attempts = 3, lease_token = NULL, lease_expires_at = NULL
+       WHERE id = $1`,
+      [id],
+    )
+
+    expect(
+      await stores[0]!.claimBatch({
+        leaseForMilliseconds: 100,
+        limit: 10,
+        maxAttempts: 3,
+        now: new Date(),
+      }),
+    ).not.toContainEqual(expect.objectContaining({ id }))
+
+    const result = await pool.query<{
+      dead_at: Date | null
+      last_error: string
+    }>('SELECT dead_at, last_error FROM billing_outbox WHERE id = $1', [id])
+    const row = result.rows[0]
+    expect(row).toBeDefined()
+    expect(row?.dead_at).toBeInstanceOf(Date)
+    expect(row?.last_error).toContain('exhausted')
+  })
+
   it('terminally dead-letters malformed job payloads', async () => {
     const id = await insertJob(new Date(), { kind: 'unsupported' })
     expect(

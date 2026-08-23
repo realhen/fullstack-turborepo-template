@@ -56,6 +56,7 @@ export class BillingJobRunner {
                 operation: 'retry_or_dead',
               }),
             )
+            return
           }
           console.error(
             JSON.stringify({
@@ -76,51 +77,23 @@ export class BillingJobRunner {
   }
 
   private async process(job: ClaimedBillingJob): Promise<void> {
-    let heartbeatInFlight = false
+    let heartbeatInFlight: Promise<void> | undefined
+    const extendLease = () => {
+      if (heartbeatInFlight) return
+      const pending = this.extendLease(job)
+      heartbeatInFlight = pending
+      void pending.finally(() => {
+        if (heartbeatInFlight === pending) heartbeatInFlight = undefined
+      })
+    }
     const heartbeat = setInterval(
-      () => {
-        if (heartbeatInFlight) return
-        heartbeatInFlight = true
-        void this.store
-          .extendLease({
-            id: job.id,
-            leaseForMilliseconds: this.options.leaseMilliseconds,
-            leaseToken: job.leaseToken,
-            now: new Date(),
-          })
-          .then((extended) => {
-            if (!extended) {
-              console.error(
-                JSON.stringify({
-                  attempt: job.attempts,
-                  event: 'billing_job_lease_lost',
-                  jobId: job.id,
-                  operation: 'extend_lease',
-                }),
-              )
-            }
-          })
-          .catch((error: unknown) => {
-            console.error(
-              JSON.stringify({
-                attempt: job.attempts,
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : 'Lease extension failed',
-                event: 'billing_job_lease_error',
-                jobId: job.id,
-              }),
-            )
-          })
-          .finally(() => {
-            heartbeatInFlight = false
-          })
-      },
+      extendLease,
       Math.max(1_000, Math.floor(this.options.leaseMilliseconds / 2)),
     )
     try {
       await this.processor.process(job.message)
+      clearInterval(heartbeat)
+      await heartbeatInFlight
       if (!(await this.store.complete(job))) {
         console.error(
           JSON.stringify({
@@ -133,6 +106,38 @@ export class BillingJobRunner {
       }
     } finally {
       clearInterval(heartbeat)
+      await heartbeatInFlight
+    }
+  }
+
+  private async extendLease(job: ClaimedBillingJob): Promise<void> {
+    try {
+      const extended = await this.store.extendLease({
+        id: job.id,
+        leaseForMilliseconds: this.options.leaseMilliseconds,
+        leaseToken: job.leaseToken,
+        now: new Date(),
+      })
+      if (!extended) {
+        console.error(
+          JSON.stringify({
+            attempt: job.attempts,
+            event: 'billing_job_lease_lost',
+            jobId: job.id,
+            operation: 'extend_lease',
+          }),
+        )
+      }
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          attempt: job.attempts,
+          error:
+            error instanceof Error ? error.message : 'Lease extension failed',
+          event: 'billing_job_lease_error',
+          jobId: job.id,
+        }),
+      )
     }
   }
 }

@@ -137,10 +137,6 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
     this.messages.push(message)
     return Promise.resolve()
   }
-
-  take(): Promise<BillingOutboxMessage | null> {
-    return Promise.resolve(this.messages.shift() ?? null)
-  }
 }
 
 export class InMemoryBillingOrganizationMembershipStore implements BillingOrganizationMembershipStore {

@@ -159,5 +159,4 @@ export type BillingOutboxMessage =
 
 export interface BillingOutbox {
   enqueue(message: BillingOutboxMessage): Promise<void>
-  take(): Promise<BillingOutboxMessage | null>
 }

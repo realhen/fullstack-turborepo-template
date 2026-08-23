@@ -157,6 +157,7 @@ export class ApplicationStack extends cdk.Stack {
       file: 'apps/api/Dockerfile',
       ignoreMode: cdk.IgnoreMode.GLOB,
       platform: ecrAssets.Platform.LINUX_AMD64,
+      target: 'aws-runner',
     })
 
     const apiTask = new ecs.FargateTaskDefinition(this, 'ApiTask', {
@@ -168,6 +169,36 @@ export class ApplicationStack extends cdk.Stack {
       },
     })
 
+    const apiDatabaseEnvironment = {
+      PGDATABASE: 'app',
+      PGHOST: database.dbInstanceEndpointAddress,
+      PGPORT: database.dbInstanceEndpointPort,
+      PGSSLMODE: 'verify-full',
+      PGSSLROOTCERT: RDS_GLOBAL_BUNDLE_PATH,
+    }
+    const databaseSecrets = {
+      PGPASSWORD: ecs.Secret.fromSecretsManager(database.secret!, 'password'),
+      PGUSER: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
+    }
+    const migrationInitContainer = apiTask.addContainer(
+      'MigrationInitContainer',
+      {
+        command: ['node', 'node_modules/@repo/database/dist/migrate.js'],
+        environment: {
+          DATABASE_POOL_MAX: MIGRATION_POOL_MAX,
+          NODE_ENV: 'production',
+          ...apiDatabaseEnvironment,
+        },
+        essential: false,
+        image: apiImage,
+        logging: ecs.LogDrivers.awsLogs({
+          logRetention: logs.RetentionDays.ONE_MONTH,
+          streamPrefix: 'migration-init',
+        }),
+        secrets: databaseSecrets,
+      },
+    )
+
     const apiContainer = apiTask.addContainer('ApiContainer', {
       environment: {
         AUTH_MODE: authConfigured ? 'oidc' : 'disabled',
@@ -178,13 +209,9 @@ export class ApplicationStack extends cdk.Stack {
         BILLING_PROVIDER: applicationSecrets ? 'stripe' : 'disabled',
         CORS_ORIGIN: `https://${domainName}`,
         DATABASE_POOL_MAX: API_POOL_MAX,
-        PGDATABASE: 'app',
-        PGHOST: database.dbInstanceEndpointAddress,
-        PGPORT: database.dbInstanceEndpointPort,
-        PGSSLMODE: 'verify-full',
-        PGSSLROOTCERT: RDS_GLOBAL_BUNDLE_PATH,
         NODE_ENV: 'production',
         PORT: '3001',
+        ...apiDatabaseEnvironment,
       },
       image: apiImage,
       healthCheck: {
@@ -203,8 +230,7 @@ export class ApplicationStack extends cdk.Stack {
       }),
       secrets: {
         WORKER_SECRET: ecs.Secret.fromSecretsManager(workerSecret, 'secret'),
-        PGPASSWORD: ecs.Secret.fromSecretsManager(database.secret!, 'password'),
-        PGUSER: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
+        ...databaseSecrets,
         ...(applicationSecrets
           ? {
               STRIPE_SECRET_KEY: ecs.Secret.fromSecretsManager(
@@ -226,6 +252,11 @@ export class ApplicationStack extends cdk.Stack {
             }
           : {}),
       },
+    })
+
+    apiContainer.addContainerDependencies({
+      condition: ecs.ContainerDependencyCondition.SUCCESS,
+      container: migrationInitContainer,
     })
 
     apiContainer.addPortMappings({ containerPort: 3001 })
@@ -258,11 +289,7 @@ export class ApplicationStack extends cdk.Stack {
       environment: {
         DATABASE_POOL_MAX: MIGRATION_POOL_MAX,
         NODE_ENV: 'production',
-        PGDATABASE: 'app',
-        PGHOST: database.dbInstanceEndpointAddress,
-        PGPORT: database.dbInstanceEndpointPort,
-        PGSSLMODE: 'verify-full',
-        PGSSLROOTCERT: RDS_GLOBAL_BUNDLE_PATH,
+        ...apiDatabaseEnvironment,
       },
       image: apiImage,
       logging: ecs.LogDrivers.awsLogs({
@@ -270,8 +297,7 @@ export class ApplicationStack extends cdk.Stack {
         streamPrefix: 'migration',
       }),
       secrets: {
-        PGPASSWORD: ecs.Secret.fromSecretsManager(database.secret!, 'password'),
-        PGUSER: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
+        ...databaseSecrets,
       },
     })
 
@@ -292,12 +318,8 @@ export class ApplicationStack extends cdk.Stack {
         BILLING_JOB_POLL_MS: '1000',
         BILLING_JOB_RETRY_MS: '30000',
         DATABASE_POOL_MAX: WORKER_POOL_MAX,
-        PGDATABASE: 'app',
-        PGHOST: database.dbInstanceEndpointAddress,
-        PGPORT: database.dbInstanceEndpointPort,
-        PGSSLMODE: 'verify-full',
-        PGSSLROOTCERT: RDS_GLOBAL_BUNDLE_PATH,
         NODE_ENV: 'production',
+        ...apiDatabaseEnvironment,
       },
       image: ecs.ContainerImage.fromAsset(repoRoot, {
         exclude: [
@@ -311,6 +333,7 @@ export class ApplicationStack extends cdk.Stack {
         file: 'apps/worker/Dockerfile',
         ignoreMode: cdk.IgnoreMode.GLOB,
         platform: ecrAssets.Platform.LINUX_AMD64,
+        target: 'aws-runner',
       }),
       logging: ecs.LogDrivers.awsLogs({
         logRetention: logs.RetentionDays.ONE_MONTH,
@@ -318,8 +341,7 @@ export class ApplicationStack extends cdk.Stack {
       }),
       secrets: {
         WORKER_SECRET: ecs.Secret.fromSecretsManager(workerSecret, 'secret'),
-        PGPASSWORD: ecs.Secret.fromSecretsManager(database.secret!, 'password'),
-        PGUSER: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
+        ...databaseSecrets,
       },
     })
     const workerService = new ecs.FargateService(this, 'WorkerService', {

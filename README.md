@@ -41,7 +41,7 @@ decorators, and request context), not a second home for feature code.
 
 `DatabaseModule` creates one bounded PostgreSQL pool per API task and shares it
 through `DATABASE_POOL`; Nest closes that pool during shutdown. The worker and
-one-off migration task own and close one pool each. This is intentionally
+migration init container own and close one pool each. This is intentionally
 task-local: two rolling ECS revisions may both connect, so capacity must be
 planned for their overlap rather than for the desired steady-state count.
 
@@ -165,19 +165,29 @@ connections, leaving operational headroom on the configured database. Revisit
 this calculation whenever task counts, rollout percentages, pool sizes, or the
 database instance change.
 
-TLS is disabled unless requested. `PGSSLMODE=require` uses Node's default trust
-store with certificate rejection enabled; it is not the portable way to select
-an environment-specific root. `verify-ca` and `verify-full` additionally
-require a readable `PGSSLROOTCERT` bundle path and fail closed otherwise. The
-AWS adapter supplies the RDS global trust bundle in API, worker, and migration
-images and configures `PGSSLMODE=verify-full` with that path. Other compute
+TLS is disabled unless requested. `PGSSLMODE` accepts `disable`, `require`,
+`verify-ca`, and `verify-full`. `require` enables certificate validation using
+the image trust store. `verify-ca` validates against an explicit root without
+hostname matching, while `verify-full` also verifies the hostname; both require
+a readable `PGSSLROOTCERT` bundle path and fail closed otherwise. The default
+`runner` images are provider-neutral and contain no AWS download or trust
+bundle. The optional CDK adapter deliberately builds the `aws-runner` target,
+which layers the RDS global bundle and configures `verify-full`. Other compute
 providers can provide their own CA file without an AWS runtime dependency.
 
-Migrations are reviewed, append-only SQL. Never edit, rename, or delete an
-applied migration; use expand/contract changes that let both old and new tasks
-run while a rolling release overlaps. CDK task dependencies express resource
-ordering only—they do not run migrations. Run the migration task, stabilize the
-API, roll out the web application, and then roll out workers.
+This undeployed template treats migrations `0000` through `0004` as its
+pre-release baseline. On the first AWS deployment, every API task runs the
+same-commit migration entrypoint in a non-essential init container; the API
+container starts only when that init container succeeds. Concurrent API tasks
+are safe because the migration runner holds a PostgreSQL advisory lock and
+verifies checksums. The standalone migration task definition remains available
+for diagnostics, but it is not an operator prerequisite for normal rollout.
+
+After the first release, migrations are reviewed and append-only: never edit,
+rename, or delete an applied migration. Use expand/contract changes that allow
+old and new tasks to run during a rolling overlap. The migration init gate runs
+before API stabilization; then roll out the API, stabilize it, deploy the web
+application, and finally roll out workers.
 
 ## Type-safe API boundary
 
@@ -231,11 +241,12 @@ pnpm --filter @repo/infra exec cdk deploy \
   -c alarmEmail=on-call@example.com
 ```
 
-The stack outputs a migration task definition, cluster, private subnet IDs, and
-security group. Run that one-off ECS task before rolling out a schema-dependent
-application version. The migration user must be able to create the non-login
-`saas_runtime` role on first deployment; subsequent runs are checksum-verified
-and serialized by a PostgreSQL advisory lock.
+The stack outputs a standalone migration task definition, cluster, private
+subnet IDs, and security group. The API task itself has the normal migration
+init gate, so an operator does not need to run the standalone task before a
+schema-dependent rollout. The migration user must be able to create the
+non-login `saas_runtime` role on first deployment; concurrent init containers
+are checksum-verified and serialized by a PostgreSQL advisory lock.
 
 RDS deletion protection, encrypted storage, Multi-AZ, 14-day backups, secret
 rotation, private subnets, HTTPS, WAF rules, and rolling deployment circuit

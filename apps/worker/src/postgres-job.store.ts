@@ -21,6 +21,8 @@ type ClaimedRow = {
   payload: unknown
 }
 
+type ExhaustedRow = { attempts: number; id: string; last_error: string }
+
 export class PostgresBillingJobStore implements BillingJobStore {
   constructor(private readonly pool: QueryPool) {}
 
@@ -34,22 +36,36 @@ export class PostgresBillingJobStore implements BillingJobStore {
       input.now.getTime() + input.leaseForMilliseconds,
     )
     const rows = await this.withTransaction(async (client) => {
-      await client.query(
+      const exhausted = await client.query<ExhaustedRow>(
         `UPDATE billing_outbox
          SET dead_at = now(),
              last_error = COALESCE(
                last_error,
-               'Billing job lease expired after its final attempt'
+               CASE
+                 WHEN lease_expires_at IS NULL
+                   THEN 'Billing job exhausted without an active lease'
+                 ELSE 'Billing job exhausted after lease expired'
+               END
              ),
              lease_token = NULL,
              lease_expires_at = NULL
          WHERE completed_at IS NULL
            AND dead_at IS NULL
            AND attempts >= $2
-           AND lease_expires_at IS NOT NULL
-           AND lease_expires_at <= $1`,
+           AND (lease_expires_at IS NULL OR lease_expires_at <= $1)
+         RETURNING id::text, attempts, last_error`,
         [input.now, input.maxAttempts],
       )
+      for (const row of exhausted.rows) {
+        console.error(
+          JSON.stringify({
+            attempt: row.attempts,
+            error: row.last_error,
+            event: 'billing_job_dead',
+            jobId: row.id,
+          }),
+        )
+      }
       const result = await client.query<ClaimedRow>(
         `WITH candidates AS (
            SELECT id

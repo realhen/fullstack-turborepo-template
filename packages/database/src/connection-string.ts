@@ -44,7 +44,11 @@ function sslConfig(environment: DatabaseEnvironment): PoolConfig['ssl'] {
       )
     }
   }
-  return { ...(ca ? { ca } : {}), rejectUnauthorized: true }
+  return {
+    ...(ca ? { ca } : {}),
+    ...(mode === 'verify-ca' ? { checkServerIdentity: () => undefined } : {}),
+    rejectUnauthorized: true,
+  }
 }
 
 const standardPostgresKeys = [

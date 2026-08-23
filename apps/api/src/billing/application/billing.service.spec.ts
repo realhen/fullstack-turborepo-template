@@ -217,8 +217,7 @@ describe('BillingService', () => {
       duplicate: true,
       eventId: 'evt_subscription_stale',
     })
-    const message = await store.take()
-    expect(message).toEqual({
+    expect(store.messages).toContainEqual({
       eventId: 'evt_subscription_stale',
       kind: 'billing.webhook',
     })

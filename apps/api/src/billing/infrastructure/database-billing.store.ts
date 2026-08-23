@@ -300,26 +300,6 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
     )
   }
 
-  async take(): Promise<BillingOutboxMessage | null> {
-    return this.withTransaction(async (client) => {
-      const result = await client.query<{
-        id: string
-        payload: BillingOutboxMessage
-      }>(
-        `SELECT id, payload FROM billing_outbox
-         WHERE dispatched_at IS NULL AND available_at <= now()
-         ORDER BY created_at FOR UPDATE SKIP LOCKED LIMIT 1`,
-      )
-      const row = result.rows[0]
-      if (!row) return null
-      await client.query(
-        'UPDATE billing_outbox SET dispatched_at = now(), attempts = attempts + 1 WHERE id = $1',
-        [row.id],
-      )
-      return row.payload
-    })
-  }
-
   private async withTransaction<T>(
     operation: (client: QueryClient) => Promise<T>,
   ): Promise<T> {

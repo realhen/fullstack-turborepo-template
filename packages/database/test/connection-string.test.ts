@@ -71,6 +71,25 @@ describe('databaseConfigFromEnvironment', () => {
     })
   })
 
+  it('uses the trusted root without hostname verification for verify-ca', () => {
+    const config = databaseConfigFromEnvironment({
+      PGDATABASE: 'app',
+      PGHOST: 'db.internal',
+      PGPASSWORD: 'secret',
+      PGSSLMODE: 'verify-ca',
+      PGSSLROOTCERT: rdsCertificateFixture,
+      PGUSER: 'runtime',
+    })
+
+    expect(config?.ssl).toMatchObject({
+      ca: 'test-rds-ca\n',
+      rejectUnauthorized: true,
+    })
+    expect(
+      (config?.ssl as { checkServerIdentity?: unknown }).checkServerIdentity,
+    ).toEqual(expect.any(Function))
+  })
+
   it('fails closed when certificate verification has no readable trusted root', () => {
     expect(() =>
       databaseConfigFromEnvironment({
