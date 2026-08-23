@@ -36,6 +36,11 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Format diagnostic
+        run: |
+          pnpm exec prettier --write apps/infra/bin/infra.ts
+          git diff -- apps/infra/bin/infra.ts
+
       - name: Check formatting
         run: pnpm format:check
 
