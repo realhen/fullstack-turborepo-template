@@ -1,9 +1,9 @@
 # SaaS Turborepo Template
 
 A production-oriented TypeScript SaaS foundation with a Next.js frontend,
-NestJS API, PostgreSQL tenancy, Stripe billing, an asynchronous worker, and AWS
-CDK infrastructure. It is designed to run completely locally before anything
-is deployed.
+NestJS API, PostgreSQL tenancy, Stripe billing, an asynchronous worker, and an
+optional AWS CDK deployment adapter. It is designed to run completely locally
+before anything is deployed.
 
 ## Included
 
@@ -13,8 +13,8 @@ is deployed.
 | API        | NestJS, OpenAPI, OIDC/local authentication adapters, durable identity linking, organization/project authorization, validation, throttling, structured errors and logs |
 | SaaS data  | Users, external identities, organizations, projects, memberships, roles, permissions, invitations, service accounts, API keys, and audit events                       |
 | Billing    | Controlled plan catalog, Stripe Checkout and Billing Portal, signed/idempotent webhooks, subscription/invoice/entitlement projections, local offline provider         |
-| Async work | Transactional webhook inbox/outbox, SQS worker, retries and leases, LocalStack adapter                                                                                |
-| AWS        | ECS Fargate web/API/worker, RDS PostgreSQL, SQS/DLQ, WAF, HTTPS ALB, Cloud Map, Secrets Manager, autoscaling, CloudWatch dashboard and alarms                         |
+| Async work | Transactional webhook inbox and PostgreSQL leased jobs, retries, and queryable dead-job state                                                                         |
+| AWS        | Optional ECS Fargate web/API/worker, RDS PostgreSQL, WAF, HTTPS ALB, Cloud Map, Secrets Manager, autoscaling, CloudWatch dashboard and alarms                         |
 
 Enterprise identity features such as SAML SSO and directory synchronization are
 intentionally outside this template.
@@ -22,12 +22,12 @@ intentionally outside this template.
 ## Repository layout
 
 - `apps/web` — browser experience and server-rendered API consumption.
-- `apps/api` — business rules and all authoritative auth/billing decisions.
+- `apps/api` — modular monolith: auth, organizations, projects, audit, billing, database, and cross-cutting `common` concerns.
 - `apps/worker` — durable asynchronous billing processing.
 - `apps/infra` — AWS CDK production stack.
 - `packages/api-client` — generated OpenAPI types and the only frontend API transport.
 - `packages/database` — schema, reviewed SQL migrations, RLS helpers, repositories, and local seed.
-- `packages/billing` — provider-neutral outbox contracts and dispatcher.
+- `packages/billing` — provider-neutral billing and leased-job contracts.
 - `packages/ui` — reusable React primitives.
 
 ## Run the entire product locally
@@ -40,14 +40,13 @@ docker compose up --build --wait
 ```
 
 This starts PostgreSQL, applies migrations, seeds the local organization and
-project, creates a LocalStack SQS queue, then starts the API, worker, and web
-app. The local billing provider never contacts Stripe.
+project, then starts the API, worker, and web app. The local billing provider
+never contacts Stripe.
 
 - Web: <http://localhost:3000>
 - API health: <http://localhost:3001/api/v1/health>
 - Swagger: <http://localhost:3001/api/docs>
 - PostgreSQL: `localhost:5432`
-- LocalStack: `localhost:4566`
 
 The development bearer token is documented in the example environment files
 and is wired into both local containers. It is deliberately rejected when
@@ -68,7 +67,7 @@ corepack enable
 pnpm install
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
-docker compose up -d postgres localstack
+docker compose up -d postgres
 pnpm db:migrate
 DATABASE_SEED_LOCAL=true pnpm db:seed
 pnpm dev
@@ -79,8 +78,7 @@ Useful commands:
 ```bash
 pnpm check             # lint, typecheck, test, and build every workspace
 pnpm format:check      # verify formatting
-pnpm openapi:generate  # regenerate the Nest OpenAPI snapshot
-pnpm --filter @repo/api-client generate
+pnpm api-client:generate # regenerate ignored OpenAPI/client artifacts
 pnpm dev:containers    # production-like local stack
 ```
 
@@ -131,8 +129,9 @@ POST /api/v1/billing/stripe/webhook
 ```
 
 The handler verifies the raw request with Stripe's SDK and commits the webhook
-inbox record and outbox message in one transaction before returning success.
-The worker publishes through SQS and calls the authenticated internal processor.
+inbox record and PostgreSQL billing job in one transaction before returning
+success. Workers claim jobs with expiring lease tokens, call the authenticated
+internal processor, and complete or retry/dead-letter the lease atomically.
 Checkout redirects are never treated as payment authority; subscription,
 invoice, and entitlement state comes from verified webhooks and reconciliation.
 
@@ -148,9 +147,9 @@ are blocked by the web ESLint configuration. The contract flow is:
 Nest controllers -> OpenAPI snapshot -> generated TypeScript paths -> openapi-fetch -> Next.js
 ```
 
-CI regenerates both OpenAPI artifacts and fails if committed output is stale.
-When changing an endpoint, update its Swagger response metadata and commit the
-regenerated client in the same pull request.
+`packages/api-client/openapi.json` and `src/generated/` are ignored build
+artifacts. `pnpm api-client:generate` creates them from the source commit for
+development, CI, and image builds; never commit them.
 
 ## Analytics and operations
 
@@ -196,8 +195,8 @@ application version. The migration user must be able to create the non-login
 and serialized by a PostgreSQL advisory lock.
 
 RDS deletion protection, encrypted storage, Multi-AZ, 14-day backups, secret
-rotation, private subnets, an SQS DLQ, HTTPS, WAF rules, and rolling deployment
-circuit breakers are enabled by default. The stack creates billable resources;
+rotation, private subnets, HTTPS, WAF rules, and rolling deployment circuit
+breakers are enabled by default. The stack creates billable resources;
 always review `cdk diff` and AWS pricing first.
 
 ## CI guarantees
