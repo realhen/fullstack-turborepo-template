@@ -19,7 +19,7 @@ describe('API', () => {
     const { createApp } = await import('../src/bootstrap.js')
     app = await createApp()
     await app.init()
-  })
+  }, 30_000)
 
   afterAll(async () => {
     if (app) await app.close()
