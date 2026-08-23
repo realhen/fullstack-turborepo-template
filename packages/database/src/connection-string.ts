@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs'
 import type { PoolConfig } from 'pg'
 
 export type DatabaseEnvironment = NodeJS.ProcessEnv & {
@@ -10,7 +11,40 @@ export type DatabaseEnvironment = NodeJS.ProcessEnv & {
   PGPASSWORD?: string
   PGPORT?: string
   PGSSLMODE?: string
+  PGSSLROOTCERT?: string
   PGUSER?: string
+}
+
+function sslConfig(environment: DatabaseEnvironment): PoolConfig['ssl'] {
+  const mode = environment.PGSSLMODE
+  if (!mode || mode === 'disable') return undefined
+  if (!['require', 'verify-ca', 'verify-full'].includes(mode)) {
+    throw new Error(
+      'PGSSLMODE must be disable, require, verify-ca, or verify-full',
+    )
+  }
+  const rootCert = environment.PGSSLROOTCERT
+  if (!rootCert && mode !== 'require') {
+    throw new Error(
+      'PGSSLROOTCERT is required for PGSSLMODE=verify-ca or verify-full',
+    )
+  }
+  let ca: string | undefined
+  if (rootCert) {
+    try {
+      ca = readFileSync(rootCert, 'utf8')
+    } catch {
+      throw new Error(
+        'PGSSLROOTCERT must point to a readable certificate bundle',
+      )
+    }
+    if (!ca.trim()) {
+      throw new Error(
+        'PGSSLROOTCERT must point to a readable certificate bundle',
+      )
+    }
+  }
+  return { ...(ca ? { ca } : {}), rejectUnauthorized: true }
 }
 
 const standardPostgresKeys = [
@@ -54,7 +88,12 @@ export function databaseConfigFromEnvironment(
   }
 
   if (environment.DATABASE_URL) {
-    return { connectionString: environment.DATABASE_URL, ...poolSettings }
+    const ssl = sslConfig(environment)
+    return {
+      connectionString: environment.DATABASE_URL,
+      ...(ssl ? { ssl } : {}),
+      ...poolSettings,
+    }
   }
 
   const suppliedStandardKeys = standardPostgresKeys.filter(
@@ -67,6 +106,7 @@ export function databaseConfigFromEnvironment(
     )
   }
 
+  const ssl = sslConfig(environment)
   return {
     database: environment.PGDATABASE,
     host: environment.PGHOST,
@@ -74,9 +114,7 @@ export function databaseConfigFromEnvironment(
     ...(environment.PGPORT
       ? { port: optionalPositiveInteger(environment, 'PGPORT') }
       : {}),
-    ...(environment.PGSSLMODE === 'require'
-      ? { ssl: { rejectUnauthorized: true } }
-      : {}),
+    ...(ssl ? { ssl } : {}),
     user: environment.PGUSER,
     ...poolSettings,
   }

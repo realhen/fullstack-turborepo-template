@@ -110,7 +110,13 @@ describe('ApplicationStack', () => {
     expect(workerEnvironment).toEqual(
       expect.arrayContaining([
         { Name: 'BILLING_JOB_POLL_MS', Value: '1000' },
+        { Name: 'DATABASE_POOL_MAX', Value: '2' },
         { Name: 'PGDATABASE', Value: 'app' },
+        { Name: 'PGSSLMODE', Value: 'verify-full' },
+        {
+          Name: 'PGSSLROOTCERT',
+          Value: '/etc/ssl/certs/rds-global-bundle.pem',
+        },
       ]),
     )
     expect(workerEnvironment).not.toEqual(
@@ -122,6 +128,40 @@ describe('ApplicationStack', () => {
         expect.objectContaining({
           Name: ['ASYNC', 'QUEUE', 'URL'].join('_'),
         }),
+      ]),
+    )
+    const allContainers = Object.values(taskDefinitions).flatMap(
+      (taskDefinition) => taskDefinition.Properties.ContainerDefinitions,
+    )
+    const apiEnvironment = allContainers.find((container) =>
+      container.Environment?.some(
+        (variable) => variable.Name === 'PORT' && variable.Value === '3001',
+      ),
+    )?.Environment
+    expect(apiEnvironment).toEqual(
+      expect.arrayContaining([
+        { Name: 'DATABASE_POOL_MAX', Value: '4' },
+        { Name: 'PGSSLMODE', Value: 'verify-full' },
+        {
+          Name: 'PGSSLROOTCERT',
+          Value: '/etc/ssl/certs/rds-global-bundle.pem',
+        },
+      ]),
+    )
+    const migrationEnvironment = allContainers.find((container) =>
+      container.Environment?.some(
+        (variable) =>
+          variable.Name === 'DATABASE_POOL_MAX' && variable.Value === '1',
+      ),
+    )?.Environment
+    expect(migrationEnvironment).toEqual(
+      expect.arrayContaining([
+        { Name: 'DATABASE_POOL_MAX', Value: '1' },
+        { Name: 'PGSSLMODE', Value: 'verify-full' },
+        {
+          Name: 'PGSSLROOTCERT',
+          Value: '/etc/ssl/certs/rds-global-bundle.pem',
+        },
       ]),
     )
 

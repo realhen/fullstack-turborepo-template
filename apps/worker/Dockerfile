@@ -19,7 +19,11 @@ RUN pnpm deploy --filter @repo/worker --prod /prod/worker
 FROM node:24-alpine
 WORKDIR /app
 ENV NODE_ENV=production
-RUN addgroup --system --gid 1001 app && adduser --system --uid 1001 --ingroup app app
+RUN wget -qO /etc/ssl/certs/rds-global-bundle.pem \
+      https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    && test -s /etc/ssl/certs/rds-global-bundle.pem \
+    && addgroup --system --gid 1001 app \
+    && adduser --system --uid 1001 --ingroup app app
 COPY --from=build --chown=app:app /prod/worker ./
 USER app
 CMD ["node", "dist/main.js"]

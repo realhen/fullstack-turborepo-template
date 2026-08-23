@@ -19,6 +19,10 @@ import * as wafv2 from 'aws-cdk-lib/aws-wafv2'
 import type { Construct } from 'constructs'
 
 export const MAX_PROJECT_NAME_LENGTH = 63
+const RDS_GLOBAL_BUNDLE_PATH = '/etc/ssl/certs/rds-global-bundle.pem'
+const API_POOL_MAX = '4'
+const WORKER_POOL_MAX = '2'
+const MIGRATION_POOL_MAX = '1'
 
 export interface ApplicationStackProps extends cdk.StackProps {
   alarmEmail?: string
@@ -173,10 +177,12 @@ export class ApplicationStack extends cdk.Stack {
         ...(props.authJwksUri ? { AUTH_JWKS_URI: props.authJwksUri } : {}),
         BILLING_PROVIDER: applicationSecrets ? 'stripe' : 'disabled',
         CORS_ORIGIN: `https://${domainName}`,
+        DATABASE_POOL_MAX: API_POOL_MAX,
         PGDATABASE: 'app',
         PGHOST: database.dbInstanceEndpointAddress,
         PGPORT: database.dbInstanceEndpointPort,
-        PGSSLMODE: 'require',
+        PGSSLMODE: 'verify-full',
+        PGSSLROOTCERT: RDS_GLOBAL_BUNDLE_PATH,
         NODE_ENV: 'production',
         PORT: '3001',
       },
@@ -250,11 +256,13 @@ export class ApplicationStack extends cdk.Stack {
     migrationTask.addContainer('MigrationContainer', {
       command: ['node', 'node_modules/@repo/database/dist/migrate.js'],
       environment: {
+        DATABASE_POOL_MAX: MIGRATION_POOL_MAX,
         NODE_ENV: 'production',
         PGDATABASE: 'app',
         PGHOST: database.dbInstanceEndpointAddress,
         PGPORT: database.dbInstanceEndpointPort,
-        PGSSLMODE: 'require',
+        PGSSLMODE: 'verify-full',
+        PGSSLROOTCERT: RDS_GLOBAL_BUNDLE_PATH,
       },
       image: apiImage,
       logging: ecs.LogDrivers.awsLogs({
@@ -283,10 +291,12 @@ export class ApplicationStack extends cdk.Stack {
         BILLING_JOB_MAX_ATTEMPTS: '5',
         BILLING_JOB_POLL_MS: '1000',
         BILLING_JOB_RETRY_MS: '30000',
+        DATABASE_POOL_MAX: WORKER_POOL_MAX,
         PGDATABASE: 'app',
         PGHOST: database.dbInstanceEndpointAddress,
         PGPORT: database.dbInstanceEndpointPort,
-        PGSSLMODE: 'require',
+        PGSSLMODE: 'verify-full',
+        PGSSLROOTCERT: RDS_GLOBAL_BUNDLE_PATH,
         NODE_ENV: 'production',
       },
       image: ecs.ContainerImage.fromAsset(repoRoot, {
@@ -310,14 +320,6 @@ export class ApplicationStack extends cdk.Stack {
         WORKER_SECRET: ecs.Secret.fromSecretsManager(workerSecret, 'secret'),
         PGPASSWORD: ecs.Secret.fromSecretsManager(database.secret!, 'password'),
         PGUSER: ecs.Secret.fromSecretsManager(database.secret!, 'username'),
-        ...(applicationSecrets
-          ? {
-              STRIPE_SECRET_KEY: ecs.Secret.fromSecretsManager(
-                applicationSecrets,
-                'STRIPE_SECRET_KEY',
-              ),
-            }
-          : {}),
       },
     })
     const workerService = new ecs.FargateService(this, 'WorkerService', {

@@ -31,7 +31,11 @@ FROM node:24-alpine AS runner
 ENV NODE_ENV=production
 ENV PORT=3001
 WORKDIR /app
-RUN addgroup --system --gid 1001 app && adduser --system --uid 1001 --ingroup app app
+RUN wget -qO /etc/ssl/certs/rds-global-bundle.pem \
+      https://truststore.pki.rds.amazonaws.com/global/global-bundle.pem \
+    && test -s /etc/ssl/certs/rds-global-bundle.pem \
+    && addgroup --system --gid 1001 app \
+    && adduser --system --uid 1001 --ingroup app app
 COPY --from=builder --chown=app:app /prod/api ./
 USER app
 EXPOSE 3001

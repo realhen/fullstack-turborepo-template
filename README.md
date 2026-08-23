@@ -30,6 +30,21 @@ intentionally outside this template.
 - `packages/billing` — provider-neutral billing and leased-job contracts.
 - `packages/ui` — reusable React primitives.
 
+### API module and database ownership
+
+`apps/api` is a modular monolith, not a set of in-process microservices. A
+feature owns its `domain`, `application`, `infrastructure`, and `presentation`
+folders; another feature may consume only an explicitly exported application
+interface, never that feature's infrastructure. `src/common` is reserved for
+genuinely cross-cutting Nest concerns (for example guards, filters,
+decorators, and request context), not a second home for feature code.
+
+`DatabaseModule` creates one bounded PostgreSQL pool per API task and shares it
+through `DATABASE_POOL`; Nest closes that pool during shutdown. The worker and
+one-off migration task own and close one pool each. This is intentionally
+task-local: two rolling ECS revisions may both connect, so capacity must be
+planned for their overlap rather than for the desired steady-state count.
+
 ## Run the entire product locally
 
 Requirements are Docker with Compose. No AWS account, hosted identity provider,
@@ -138,6 +153,32 @@ invoice, and entitlement state comes from verified webhooks and reconciliation.
 Use Stripe test mode and the Stripe CLI when testing the real provider locally.
 Keep `BILLING_PROVIDER=local` for fully offline feature development.
 
+## PostgreSQL connection capacity and TLS
+
+The portable runtime accepts `DATABASE_URL` or complete standard PostgreSQL
+`PG*` variables. `DATABASE_POOL_MAX`, `DATABASE_POOL_IDLE_TIMEOUT_MS`, and
+`DATABASE_POOL_CONNECTION_TIMEOUT_MS` are provider-neutral safeguards. The AWS
+adapter sets API/worker/migration pools to 4/2/1 respectively. With an ECS
+maximum of four API and four worker tasks, a 200% rolling deployment can run
+eight of each at once: `(8 × 4) + (8 × 2) + 1 migration = 49` application
+connections, leaving operational headroom on the configured database. Revisit
+this calculation whenever task counts, rollout percentages, pool sizes, or the
+database instance change.
+
+TLS is disabled unless requested. `PGSSLMODE=require` uses Node's default trust
+store with certificate rejection enabled; it is not the portable way to select
+an environment-specific root. `verify-ca` and `verify-full` additionally
+require a readable `PGSSLROOTCERT` bundle path and fail closed otherwise. The
+AWS adapter supplies the RDS global trust bundle in API, worker, and migration
+images and configures `PGSSLMODE=verify-full` with that path. Other compute
+providers can provide their own CA file without an AWS runtime dependency.
+
+Migrations are reviewed, append-only SQL. Never edit, rename, or delete an
+applied migration; use expand/contract changes that let both old and new tasks
+run while a rolling release overlaps. CDK task dependencies express resource
+ordering only—they do not run migrations. Run the migration task, stabilize the
+API, roll out the web application, and then roll out workers.
+
 ## Type-safe API boundary
 
 All frontend calls use `@repo/api-client`; direct backend `fetch` and Axios calls
@@ -160,8 +201,10 @@ explicit, reviewed event taxonomy for product analytics.
 
 The API emits JSON request logs with propagated request IDs and a stable error
 envelope. The AWS stack enables ECS Container Insights and creates a CloudWatch
-dashboard plus alarms for API 5xx responses, queue age, dead-letter messages,
-and database CPU. An optional alarm email subscribes to the generated SNS topic.
+dashboard plus alarms for API 5xx responses and database CPU. PostgreSQL job
+state is queryable directly; this adapter does not create SQS queue-age or
+dead-letter alarms. An optional alarm email subscribes to the generated SNS
+topic.
 
 ## AWS deployment
 
@@ -201,7 +244,8 @@ always review `cdk diff` and AWS pricing first.
 
 ## CI guarantees
 
-Pull requests run formatting, lint, typechecking, tests, builds, OpenAPI drift
-checks, CDK synthesis, real PostgreSQL migration/RLS integration tests, and a
-full Docker Compose smoke test. Dependabot keeps npm and GitHub Actions updates
-visible for review.
+Pull requests run formatting, lint, typechecking, tests, builds, same-commit
+OpenAPI/client generation, CDK synthesis, real PostgreSQL migration/RLS
+integration tests, and a full Docker Compose smoke test. Generated artifacts
+are intentionally ignored rather than compared as committed OpenAPI drift.
+Dependabot keeps npm and GitHub Actions updates visible for review.
