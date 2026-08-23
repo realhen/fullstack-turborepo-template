@@ -57,6 +57,7 @@ jobs:
         run: |
           pnpm openapi:generate
           pnpm --filter @repo/api-client generate
+          pnpm exec prettier --write packages/api-client/openapi.json packages/api-client/src/generated/schema.ts
           git diff --exit-code -- packages/api-client/openapi.json packages/api-client/src/generated/schema.ts
 
       - name: Apply and test database migrations
