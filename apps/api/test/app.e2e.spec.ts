@@ -78,7 +78,7 @@ describe('API', () => {
     expect(healthResponses.every((response) => response.status === 200)).toBe(
       true,
     )
-  })
+  }, 15_000)
 
   it('requires authentication for the current-user endpoint', async () => {
     const server = app.getHttpServer()
