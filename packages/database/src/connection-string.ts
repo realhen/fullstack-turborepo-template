@@ -1,47 +1,91 @@
-type DatabaseEnvironment = {
-  DATABASE_SECRET?: string
+import type { PoolConfig } from 'pg'
+
+export type DatabaseEnvironment = NodeJS.ProcessEnv & {
+  DATABASE_POOL_CONNECTION_TIMEOUT_MS?: string
+  DATABASE_POOL_IDLE_TIMEOUT_MS?: string
+  DATABASE_POOL_MAX?: string
   DATABASE_URL?: string
+  PGDATABASE?: string
+  PGHOST?: string
+  PGPASSWORD?: string
+  PGPORT?: string
+  PGSSLMODE?: string
+  PGUSER?: string
 }
 
-type RdsSecret = {
-  dbname?: string
-  host?: string
-  password?: string
-  port?: number | string
-  username?: string
-}
+const standardPostgresKeys = [
+  'PGHOST',
+  'PGUSER',
+  'PGPASSWORD',
+  'PGDATABASE',
+] as const
 
-/** Supports a normal local URL or the JSON secret injected by ECS/RDS. */
-export function databaseUrlFromEnvironment(
-  environment: DatabaseEnvironment = process.env,
-): string | undefined {
-  if (environment.DATABASE_URL) return environment.DATABASE_URL
-  if (!environment.DATABASE_SECRET) return undefined
-
-  let secret: RdsSecret
-  try {
-    secret = JSON.parse(environment.DATABASE_SECRET) as RdsSecret
-  } catch {
-    throw new Error('DATABASE_SECRET must be valid RDS secret JSON')
+function optionalPositiveInteger(
+  environment: DatabaseEnvironment,
+  key: keyof DatabaseEnvironment,
+): number | undefined {
+  const value = environment[key]
+  if (value === undefined || value === '') return undefined
+  if (!/^\d+$/.test(value) || Number(value) < 1) {
+    throw new Error(`${key} must be a positive integer`)
   }
-  if (!secret.host || !secret.username || !secret.password || !secret.dbname) {
+  return Number(value)
+}
+
+/** Builds a portable pg Pool configuration from DATABASE_URL or standard PG* variables. */
+export function databaseConfigFromEnvironment(
+  environment: DatabaseEnvironment = process.env,
+): PoolConfig | undefined {
+  const connectionTimeoutMillis = optionalPositiveInteger(
+    environment,
+    'DATABASE_POOL_CONNECTION_TIMEOUT_MS',
+  )
+  const idleTimeoutMillis = optionalPositiveInteger(
+    environment,
+    'DATABASE_POOL_IDLE_TIMEOUT_MS',
+  )
+  const max = optionalPositiveInteger(environment, 'DATABASE_POOL_MAX')
+  const poolSettings: PoolConfig = {
+    ...(connectionTimeoutMillis !== undefined ? { connectionTimeoutMillis } : {}),
+    ...(idleTimeoutMillis !== undefined ? { idleTimeoutMillis } : {}),
+    ...(max !== undefined ? { max } : {}),
+  }
+
+  if (environment.DATABASE_URL) {
+    return { connectionString: environment.DATABASE_URL, ...poolSettings }
+  }
+
+  const suppliedStandardKeys = standardPostgresKeys.filter(
+    (key) => environment[key],
+  )
+  if (suppliedStandardKeys.length === 0) return undefined
+  if (suppliedStandardKeys.length !== standardPostgresKeys.length) {
     throw new Error(
-      'DATABASE_SECRET requires host, username, password, and dbname fields',
+      'DATABASE_URL or complete PGHOST/PGUSER/PGPASSWORD/PGDATABASE configuration is required',
     )
   }
 
-  const username = encodeURIComponent(secret.username)
-  const password = encodeURIComponent(secret.password)
-  const port = String(secret.port ?? 5432)
-  return `postgresql://${username}:${password}@${secret.host}:${port}/${encodeURIComponent(secret.dbname)}?sslmode=require`
+  return {
+    database: environment.PGDATABASE,
+    host: environment.PGHOST,
+    password: environment.PGPASSWORD,
+    ...(environment.PGPORT ? { port: optionalPositiveInteger(environment, 'PGPORT') } : {}),
+    ...(environment.PGSSLMODE === 'require'
+      ? { ssl: { rejectUnauthorized: true } }
+      : {}),
+    user: environment.PGUSER,
+    ...poolSettings,
+  }
 }
 
-export function requireDatabaseUrl(
+export function requireDatabaseConfig(
   environment: DatabaseEnvironment = process.env,
-): string {
-  const databaseUrl = databaseUrlFromEnvironment(environment)
-  if (!databaseUrl) {
-    throw new Error('DATABASE_URL or DATABASE_SECRET is required')
+): PoolConfig {
+  const config = databaseConfigFromEnvironment(environment)
+  if (!config) {
+    throw new Error(
+      'DATABASE_URL or complete PGHOST/PGUSER/PGPASSWORD/PGDATABASE configuration is required',
+    )
   }
-  return databaseUrl
+  return config
 }

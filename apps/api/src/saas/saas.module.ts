@@ -1,7 +1,8 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { createDatabase, databaseUrlFromEnvironment } from '@repo/database'
 import type { Pool } from 'pg'
+import { DATABASE_POOL } from '../database/database.constants'
+import { DatabaseModule } from '../database/database.module'
 import { AuditReadController } from './audit/audit-read.controller'
 import { AuditReadService } from './audit/audit-read.service'
 import { AUDIT_READ_STORE } from './audit/audit-read.types'
@@ -70,10 +71,8 @@ import { ProjectsController } from './projects/projects.controller'
 import { ProjectService } from './projects/project.service'
 import { PROJECT_MEMBERSHIP_STORE } from './projects/project.types'
 
-export const SAAS_DATABASE_POOL = Symbol('SAAS_DATABASE_POOL')
-
 @Module({
-  imports: [BillingModule],
+  imports: [BillingModule, DatabaseModule],
   controllers: [
     ApiKeyController,
     AuditReadController,
@@ -85,13 +84,6 @@ export const SAAS_DATABASE_POOL = Symbol('SAAS_DATABASE_POOL')
     ProjectsController,
   ],
   providers: [
-    {
-      provide: SAAS_DATABASE_POOL,
-      useFactory: (): Pool | null => {
-        const databaseUrl = databaseUrlFromEnvironment()
-        return databaseUrl ? createDatabase(databaseUrl).pool : null
-      },
-    },
     {
       provide: AUTHENTICATION_ADAPTER,
       inject: [ConfigService],
@@ -123,7 +115,7 @@ export const SAAS_DATABASE_POOL = Symbol('SAAS_DATABASE_POOL')
     },
     {
       provide: IDENTITY_RESOLVER,
-      inject: [SAAS_DATABASE_POOL],
+      inject: [DATABASE_POOL],
       useFactory: (pool: Pool | null): IdentityResolver =>
         pool
           ? new DatabaseIdentityResolver(pool)
@@ -134,7 +126,7 @@ export const SAAS_DATABASE_POOL = Symbol('SAAS_DATABASE_POOL')
     },
     {
       provide: ORGANIZATION_MEMBERSHIP_STORE,
-      inject: [ConfigService, SAAS_DATABASE_POOL],
+      inject: [ConfigService, DATABASE_POOL],
       useFactory: (config: ConfigService, pool: Pool | null) => {
         if (pool) return new DatabaseOrganizationMembershipStore(pool)
         return new InMemoryOrganizationMembershipStore(
@@ -160,7 +152,7 @@ export const SAAS_DATABASE_POOL = Symbol('SAAS_DATABASE_POOL')
     },
     {
       provide: PROJECT_MEMBERSHIP_STORE,
-      inject: [ConfigService, SAAS_DATABASE_POOL],
+      inject: [ConfigService, DATABASE_POOL],
       useFactory: (config: ConfigService, pool: Pool | null) => {
         if (pool) return new DatabaseProjectMembershipStore(pool)
         return new InMemoryProjectMembershipStore(
@@ -184,7 +176,7 @@ export const SAAS_DATABASE_POOL = Symbol('SAAS_DATABASE_POOL')
     },
     {
       provide: ORGANIZATION_PERMISSION_EVALUATOR,
-      inject: [ORGANIZATION_MEMBERSHIP_STORE, SAAS_DATABASE_POOL],
+      inject: [ORGANIZATION_MEMBERSHIP_STORE, DATABASE_POOL],
       useFactory: (
         memberships: OrganizationMembershipStore,
         pool: Pool | null,
@@ -195,7 +187,7 @@ export const SAAS_DATABASE_POOL = Symbol('SAAS_DATABASE_POOL')
     },
     {
       provide: ORGANIZATION_MANAGEMENT_STORE,
-      inject: [SAAS_DATABASE_POOL],
+      inject: [DATABASE_POOL],
       useFactory: (pool: Pool | null) =>
         pool
           ? new DatabaseOrganizationManagementStore(pool)
@@ -203,7 +195,7 @@ export const SAAS_DATABASE_POOL = Symbol('SAAS_DATABASE_POOL')
     },
     {
       provide: PROJECT_MANAGEMENT_STORE,
-      inject: [SAAS_DATABASE_POOL],
+      inject: [DATABASE_POOL],
       useFactory: (pool: Pool | null) =>
         pool
           ? new DatabaseProjectManagementStore(pool)
@@ -211,7 +203,7 @@ export const SAAS_DATABASE_POOL = Symbol('SAAS_DATABASE_POOL')
     },
     {
       provide: INVITATION_STORE,
-      inject: [SAAS_DATABASE_POOL],
+      inject: [DATABASE_POOL],
       useFactory: (pool: Pool | null) =>
         pool
           ? new DatabaseInvitationStore(pool)
@@ -219,20 +211,20 @@ export const SAAS_DATABASE_POOL = Symbol('SAAS_DATABASE_POOL')
     },
     {
       provide: API_KEY_STORE,
-      inject: [SAAS_DATABASE_POOL],
+      inject: [DATABASE_POOL],
       useFactory: (pool: Pool | null) =>
         pool ? new DatabaseApiKeyStore(pool) : new InMemoryApiKeyStore(),
     },
     InMemoryAuditReadStore,
     {
       provide: AUDIT_READ_STORE,
-      inject: [InMemoryAuditReadStore, SAAS_DATABASE_POOL],
+      inject: [InMemoryAuditReadStore, DATABASE_POOL],
       useFactory: (memory: InMemoryAuditReadStore, pool: Pool | null) =>
         pool ? new DatabaseAuditReadStore(pool) : memory,
     },
     {
       provide: AUDIT_STORE,
-      inject: [InMemoryAuditReadStore, SAAS_DATABASE_POOL],
+      inject: [InMemoryAuditReadStore, DATABASE_POOL],
       useFactory: (memory: InMemoryAuditReadStore, pool: Pool | null) =>
         pool ? new DatabaseAuditStore(pool) : memory,
     },
@@ -264,7 +256,6 @@ export const SAAS_DATABASE_POOL = Symbol('SAAS_DATABASE_POOL')
     PROJECT_MANAGEMENT_STORE,
     PROJECT_MEMBERSHIP_STORE,
     ProjectService,
-    SAAS_DATABASE_POOL,
     ScopeGuard,
   ],
 })

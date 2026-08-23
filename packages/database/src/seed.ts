@@ -1,11 +1,12 @@
 import { Pool } from 'pg'
-import { requireDatabaseUrl } from './connection-string'
+import { requireDatabaseConfig } from './connection-string'
+import type { PoolConfig } from 'pg'
 
 const localOrganizationId = '00000000-0000-4000-8000-000000000001'
 const localProjectId = '00000000-0000-4000-8000-000000000002'
 const localUserId = '00000000-0000-4000-8000-000000000003'
 const ownerRoleId = '00000000-0000-4000-8000-000000000004'
-function requireLocalSeedUrl(): string {
+function requireLocalSeedConfig(): PoolConfig {
   if (
     process.env.NODE_ENV === 'production' ||
     process.env.DATABASE_SEED_LOCAL !== 'true'
@@ -14,11 +15,11 @@ function requireLocalSeedUrl(): string {
       'Seeding requires NODE_ENV != production and DATABASE_SEED_LOCAL=true',
     )
   }
-  return requireDatabaseUrl()
+  return requireDatabaseConfig()
 }
 
 async function seed(): Promise<void> {
-  const pool = new Pool({ connectionString: requireLocalSeedUrl() })
+  const pool = new Pool(requireLocalSeedConfig())
   const client = await pool.connect()
   const subject = process.env.AUTH_LOCAL_SUBJECT ?? 'local-developer'
   try {

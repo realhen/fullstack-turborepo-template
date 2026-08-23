@@ -1,6 +1,8 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
-import { createDatabase, databaseUrlFromEnvironment } from '@repo/database'
+import type { Pool } from 'pg'
+import { DATABASE_POOL } from '../../database/database.constants'
+import { DatabaseModule } from '../../database/database.module'
 import { BillingController } from './billing.controller'
 import { ControlledPlanCatalog } from './billing.catalog'
 import { BillingProjectionProcessor } from './billing-projection.processor'
@@ -29,6 +31,7 @@ import { LocalBillingProvider } from './local-billing.provider'
 import { StripeBillingProvider } from './stripe-billing.provider'
 
 @Module({
+  imports: [DatabaseModule],
   controllers: [
     BillingController,
     BillingWebhookController,
@@ -37,10 +40,10 @@ import { StripeBillingProvider } from './stripe-billing.provider'
   providers: [
     {
       provide: BILLING_STORE,
-      useFactory: () => {
-        const databaseUrl = databaseUrlFromEnvironment()
-        return databaseUrl
-          ? new PostgresBillingStore(createDatabase(databaseUrl).pool)
+      inject: [DATABASE_POOL],
+      useFactory: (pool: Pool | null) => {
+        return pool
+          ? new PostgresBillingStore(pool)
           : new InMemoryBillingStore()
       },
     },
