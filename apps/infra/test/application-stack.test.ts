@@ -11,6 +11,9 @@ const certificateArn =
 
 type TaskDefinitionResource = {
   Properties: {
+    ContainerDefinitions: Array<{
+      Environment?: Array<{ Name: string; Value: string }>
+    }>
     RuntimePlatform: {
       CpuArchitecture: string
       OperatingSystemFamily: string
@@ -91,9 +94,36 @@ describe('ApplicationStack', () => {
       PubliclyAccessible: false,
       StorageEncrypted: true,
     })
-    template.resourceCountIs('AWS::SQS::Queue', 2)
+    template.resourceCountIs('AWS::SQS::Queue', 0)
     template.resourceCountIs('AWS::CloudWatch::Dashboard', 1)
-    template.resourceCountIs('AWS::CloudWatch::Alarm', 6)
+    template.resourceCountIs('AWS::CloudWatch::Alarm', 2)
+
+    const workerTask = Object.values(taskDefinitions).find((taskDefinition) =>
+      taskDefinition.Properties.ContainerDefinitions.some((container) =>
+        container.Environment?.some(
+          (variable) => variable.Name === 'BILLING_JOB_POLL_MS',
+        ),
+      ),
+    )
+    const workerEnvironment =
+      workerTask?.Properties.ContainerDefinitions[0]?.Environment
+    expect(workerEnvironment).toEqual(
+      expect.arrayContaining([
+        { Name: 'BILLING_JOB_POLL_MS', Value: '1000' },
+        { Name: 'PGDATABASE', Value: 'app' },
+      ]),
+    )
+    expect(workerEnvironment).not.toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          Name: ['BILLING', 'SQS', 'QUEUE', 'URL'].join('_'),
+        }),
+        expect.objectContaining({ Name: ['AWS', 'REGION'].join('_') }),
+        expect.objectContaining({
+          Name: ['ASYNC', 'QUEUE', 'URL'].join('_'),
+        }),
+      ]),
+    )
 
     template.hasResourceProperties(
       'AWS::ElasticLoadBalancingV2::Listener',
