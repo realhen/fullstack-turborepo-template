@@ -22,7 +22,7 @@ describe('API', () => {
   })
 
   afterAll(async () => {
-    await app.close()
+    if (app) await app.close()
   })
 
   it('reports healthy', async () => {

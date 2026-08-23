@@ -16,6 +16,10 @@ export class AuthenticationService {
     if (!match) {
       return Promise.reject(new Error('A Bearer token is required'))
     }
-    return this.adapter.authenticate(match[1])
+    const token = match[1]
+    if (!token) {
+      return Promise.reject(new Error('A Bearer token is required'))
+    }
+    return this.adapter.authenticate(token)
   }
 }

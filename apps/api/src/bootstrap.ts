@@ -5,6 +5,7 @@ import { NestFactory } from '@nestjs/core'
 import type { NestExpressApplication } from '@nestjs/platform-express'
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger'
 import compression from 'compression'
+import type { NextFunction, Request, Response } from 'express'
 import helmet from 'helmet'
 import { AppModule } from './app.module'
 import type { Environment } from './env'
@@ -30,13 +31,13 @@ export async function createApp(): Promise<NestExpressApplication> {
     contentSecurityPolicy: {
       directives: {
         ...helmet.contentSecurityPolicy.getDefaultDirectives(),
-        scriptSrc: ["'self'", "'unsafe-inline'"],
-        upgradeInsecureRequests: null,
+        'script-src': ["'self'", "'unsafe-inline'"],
+        'upgrade-insecure-requests': null,
       },
     },
   })
 
-  app.use((request, response, next) => {
+  app.use((request: Request, response: Response, next: NextFunction) => {
     const isSwaggerUiRequest =
       request.path === '/api/docs' || request.path.startsWith('/api/docs/')
 

@@ -1,6 +1,14 @@
 import { timingSafeEqual } from 'node:crypto'
-import type { JWTPayload } from 'jose'
 import type { Principal } from './principal'
+
+interface JwtClaims {
+  sub?: string
+  email?: unknown
+  scope?: unknown
+  scp?: unknown
+  permissions?: unknown
+  client_id?: unknown
+}
 
 export class AuthenticationError extends Error {}
 
@@ -36,7 +44,7 @@ export class LocalTokenAuthenticationAdapter implements AuthenticationAdapter {
 }
 
 export class OidcJwksAuthenticationAdapter implements AuthenticationAdapter {
-  private jwks?: ReturnType<(typeof import('jose'))['createRemoteJWKSet']>
+  private jwks?: unknown
 
   constructor(
     private readonly jwksUri: string,
@@ -51,10 +59,14 @@ export class OidcJwksAuthenticationAdapter implements AuthenticationAdapter {
       // provider-neutral without a runtime require() failure.
       const { createRemoteJWKSet, jwtVerify } = await import('jose')
       this.jwks ??= createRemoteJWKSet(new URL(this.jwksUri))
-      const { payload } = await jwtVerify(token, this.jwks, {
-        ...(this.audience ? { audience: this.audience } : {}),
-        issuer: this.issuer,
-      })
+      const { payload } = await jwtVerify(
+        token,
+        this.jwks as ReturnType<typeof createRemoteJWKSet>,
+        {
+          ...(this.audience ? { audience: this.audience } : {}),
+          issuer: this.issuer,
+        },
+      )
       if (this.clientId && payload.client_id !== this.clientId) {
         throw new AuthenticationError('Token client is invalid')
       }
@@ -65,7 +77,7 @@ export class OidcJwksAuthenticationAdapter implements AuthenticationAdapter {
   }
 }
 
-function principalFromJwt(payload: JWTPayload, provider: string): Principal {
+function principalFromJwt(payload: JwtClaims, provider: string): Principal {
   if (!payload.sub) {
     throw new AuthenticationError('Token subject is required')
   }
