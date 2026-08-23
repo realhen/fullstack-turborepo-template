@@ -23,9 +23,11 @@ describe('SqsQueueConsumer', () => {
       ]),
     }
     const processor = {
-      process: vi.fn(async (eventId: string) => {
-        if (eventId === 'evt_retry') throw new Error('retry later')
-      }),
+      process: vi.fn((eventId: string) =>
+        eventId === 'evt_retry'
+          ? Promise.reject(new Error('retry later'))
+          : Promise.resolve(),
+      ),
       reconcile: vi.fn(),
     }
     const consumer = new SqsQueueConsumer(transport, 'queue-url', processor)

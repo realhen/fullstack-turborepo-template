@@ -15,20 +15,23 @@ class MemoryOutboxStore implements BillingOutboxStore {
     this.pending = messages
   }
 
-  async claimBatch(): Promise<ClaimedBillingOutboxMessage[]> {
-    return this.pending.filter((message) => !this.sent.has(message.id))
+  claimBatch(): Promise<ClaimedBillingOutboxMessage[]> {
+    return Promise.resolve(
+      this.pending.filter((message) => !this.sent.has(message.id)),
+    )
   }
 
-  async markSent(input: ClaimedBillingOutboxMessage): Promise<boolean> {
-    if (this.sent.has(input.id)) return false
+  markSent(input: ClaimedBillingOutboxMessage): Promise<boolean> {
+    if (this.sent.has(input.id)) return Promise.resolve(false)
     this.sent.add(input.id)
-    return true
+    return Promise.resolve(true)
   }
 
-  async releaseClaim(input: {
+  releaseClaim(input: {
     claimed: ClaimedBillingOutboxMessage
   }): Promise<void> {
     this.released.push(input.claimed)
+    return Promise.resolve()
   }
 }
 
