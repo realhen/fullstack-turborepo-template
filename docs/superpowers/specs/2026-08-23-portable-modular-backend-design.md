@@ -1,6 +1,6 @@
 # Portable Modular Backend Design
 
-**Status:** Proposed for written review
+**Status:** Approved for implementation, revised after final review
 
 **Date:** 2026-08-23
 
@@ -188,8 +188,10 @@ close their own pools. Capacity planning follows:
 ```
 
 The AWS deployment documents concrete values for its configured task limits.
-RDS Proxy remains an optional future infrastructure optimization, not an
-application requirement.
+Its migration init container and API application container do not hold pools
+at the same time, so the API task's pool allowance is counted once. RDS Proxy
+remains an optional future infrastructure optimization, not an application
+requirement.
 
 ### Tenant isolation
 
@@ -206,10 +208,24 @@ Transaction-local state must never escape back into the pool.
 
 ### Migrations
 
-Migrations never run from every API replica at startup. Local Compose runs a
-one-off migration container before the API. Production runs the migration task
-before schema-dependent application tasks. The migration runner keeps its
-PostgreSQL advisory lock, checksum verification, and immutable applied files.
+Migrations do not run inside the API application process. Local Compose runs a
+one-off migration container before the API. In the optional AWS adapter, every
+new API task definition includes a nonessential migration init container and
+the API container has an ECS `SUCCESS` dependency on it. The init container
+uses the same commit and database configuration as the API image. Multiple new
+tasks may invoke the runner concurrently, but its PostgreSQL advisory lock,
+checksum verification, and immutable applied files serialize execution; tasks
+that acquire the lock later verify the already-applied migrations and exit.
+Migration failure prevents the new API task from starting and therefore
+prevents service stabilization.
+
+This repository is an undeployed template. Migrations `0000` through `0004`
+are its pre-release baseline, so no legacy production database or mixed-version
+production task compatibility is assumed for that initial baseline. Migration
+`0004` nevertheless initializes an entitlement projection version for every
+existing billing account and enqueues reconciliation work so seeded or local
+pre-release data converges on provider state. Once a release has been deployed,
+all later schema changes are append-only and use expand/contract compatibility.
 
 ## Portable PostgreSQL billing job queue
 
@@ -275,9 +291,11 @@ migration evolves the table and indexes for the final queue state.
 - SQS queue, DLQ, permissions, environment variables, and queue alarms in CDK
 - Generic `ASYNC_QUEUE_URL` configuration
 
-The queue remains behind provider-neutral job-store contracts so another
-adapter can be added later without changing billing services. No unused SQS,
-Redis, or broker adapter is shipped now.
+The worker queue remains behind provider-neutral job-store contracts so another
+adapter can be added later without changing billing services. The API keeps no
+generic outbox-consumer method or `dispatched_at` dispatch path: it only inserts
+durable jobs transactionally. No unused SQS, Redis, or broker adapter is shipped
+now.
 
 ## Generated API client
 
@@ -313,12 +331,15 @@ generated output.
 API, web, and worker images come from the same commit. Deployment order is:
 
 ```text
-database migration -> API stabilization -> web rollout -> worker rollout
+API migration init -> API stabilization -> web rollout -> worker rollout
 ```
 
-The AWS CDK adapter expresses service dependencies so CloudFormation does not
-update the services in parallel. Portable deployment documentation defines the
-same order for other environments.
+The AWS CDK adapter enforces the schema gate inside each API task and expresses
+service dependencies so CloudFormation does not update the services in
+parallel. On a first deploy, the API cannot start before the baseline exists.
+On later rolling updates, old tasks remain available while new tasks run the
+expand migration and then start the new API. Portable deployment documentation
+defines the equivalent migrate-before-API order for other environments.
 
 Rolling releases still use expand/contract compatibility:
 
@@ -327,6 +348,14 @@ Rolling releases still use expand/contract compatibility:
 - Migrations must support old and new application tasks during the rollout.
 - A generated client from the new commit must tolerate the API version present
   during every phase of the coordinated release.
+
+Generic API and worker Docker image targets contain no AWS downloads, trust
+bundles, SDKs, or runtime assumptions. Their default targets accept ordinary
+PostgreSQL TLS configuration, including an operator-mounted `PGSSLROOTCERT`.
+The optional AWS CDK adapter explicitly builds `aws-runner` targets that add the
+Amazon RDS CA bundle and supplies `PGSSLMODE=verify-full`. API environment
+validation accepts the standard PostgreSQL SSL modes used by `node-postgres`,
+including `disable`, `require`, `verify-ca`, and `verify-full`.
 
 ## Microservice decision
 
@@ -359,6 +388,9 @@ cross-feature infrastructure imports so those extraction seams remain viable.
   without logging secrets or full payment payloads.
 - Permanent job failures are observable through database state and structured
   worker logs.
+- Worker shutdown awaits an in-flight lease-extension request before it can
+  complete or release the same job, and structured logs distinguish an actual
+  retry/dead transition from a lost lease.
 - Health checks distinguish process health from dependency readiness where
   needed; a transient PostgreSQL failure must not leak tenant context or leave
   a job permanently leased.
@@ -408,6 +440,9 @@ cross-feature infrastructure imports so those extraction seams remain viable.
   Swagger assets, and a durable billing job round trip.
 - AWS CDK synthesis contains no SQS resources and retains deployable web, API,
   worker, migration, RDS, networking, security, and observability resources.
+- CDK tests prove the API container depends on successful completion of its
+  migration init container and that the generic and AWS image targets remain
+  separate.
 - Final acceptance runs `pnpm check`, `pnpm format:check`, relevant PostgreSQL
   integration tests, Docker Compose verification, `git diff --check`, and
   working-tree scope inspection.

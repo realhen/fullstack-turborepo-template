@@ -24,6 +24,7 @@
 - Preserve concurrent user edits and do not modify files outside the task's stated ownership.
 - Use strict TDD for behavioral code: write the test, observe the expected failure, add the minimum implementation, and observe the pass.
 - Before handoff run `pnpm check` and `pnpm format:check` plus the integration and container checks specified below.
+- This repository has no existing deployment. Migrations `0000` through `0004` are the pre-release baseline; compatibility rules apply to migrations introduced after that baseline ships.
 
 ---
 
@@ -814,3 +815,72 @@ git commit -m "docs: explain portable backend operations"
 - [ ] **Step 8: Return structured implementation evidence**
 
 Report every commit, changed-file scope, exact verification command and exit result, TDD red/green evidence, judgment calls, and any remaining gap. A successful report must state that `pnpm check`, `pnpm format:check`, PostgreSQL integration tests, container smoke tests, `git diff --check`, and generated-artifact inspection all passed.
+
+### Task 10: Final-review corrections for a migration-gated, cloud-neutral release
+
+**Files:**
+
+- Modify: `packages/database/src/connection-string.ts`
+- Modify: `packages/database/test/connection-string.test.ts`
+- Modify: `apps/api/src/env.ts`
+- Modify: `apps/api/src/billing/domain/billing-outbox.ts`
+- Modify: `apps/api/src/billing/infrastructure/database-billing.store.ts`
+- Modify: relevant API billing tests
+- Modify: `packages/database/migrations/0004_billing_entitlement_projection_versions.sql`
+- Modify: `apps/worker/src/postgres-job.store.ts`
+- Modify: `apps/worker/src/worker.ts`
+- Modify: relevant worker tests
+- Modify: `apps/api/Dockerfile`
+- Modify: `apps/worker/Dockerfile`
+- Modify: `apps/infra/lib/fullstack-stack.ts`
+- Modify: `apps/infra/test/fullstack-stack.test.ts`
+- Modify: `README.md`
+
+**Interfaces:**
+
+- Generic Docker targets are AWS-neutral; explicit `aws-runner` targets add the RDS CA bundle for CDK only.
+- Every ECS API task runs the migration command in a nonessential init container, and the API container starts only after ECS reports that container exited successfully.
+- PostgreSQL SSL parsing accepts `disable`, `require`, `verify-ca`, and `verify-full`, plus `PGSSLROOTCERT`.
+- Queue cleanup can terminally mark every exhausted unfinished row, including pre-release rows with a null lease expiry.
+- Worker shutdown and job finalization wait for an active heartbeat and log only state transitions that actually occurred.
+- The API billing outbox is enqueue-only; no obsolete `take()`/`dispatched_at` consumer path remains.
+
+- [ ] **Step 1: Write failing SSL, queue, worker, Docker, and CDK tests**
+
+Cover `PGSSLMODE=verify-full` with a root certificate, exhausted jobs whose lease expiry is null, an active heartbeat during finalization, a false token-guarded retry result, absence of the API `take()` path, generic image neutrality, and the ECS migration-container `SUCCESS` dependency.
+
+- [ ] **Step 2: Verify each new test fails for the intended reason**
+
+Run the narrow package tests before implementation and retain the red evidence.
+
+- [ ] **Step 3: Complete the pre-release entitlement baseline**
+
+Keep migration `0004` append-only. Initialize the entitlement projection version for every existing billing account, using the newest entitlement version when present and a conservative current watermark otherwise. Insert an idempotent `billing.reconcile` job for each existing billing account so local or seeded pre-release data refreshes from authoritative provider state.
+
+- [ ] **Step 4: Fix PostgreSQL SSL and terminal queue behavior**
+
+Accept the standard verified SSL modes and `PGSSLROOTCERT` consistently in package and Nest environment validation. Make exhausted unfinished jobs terminal when they are not actively leased, including rows with `lease_expires_at IS NULL`.
+
+- [ ] **Step 5: Make heartbeat/finalization ordering and logs truthful**
+
+Track the active lease-extension promise, stop scheduling extensions, and await the active extension before complete, retry, or return. Emit retry/dead logs only when the token-guarded update succeeds, and emit a structured terminal-state log for exhausted cleanup.
+
+- [ ] **Step 6: Remove the obsolete API outbox-consumer surface**
+
+Delete `BillingOutbox.take()`, its database implementation, and tests or fixtures that rely on `dispatched_at`. The API inserts jobs; only the worker claims them.
+
+- [ ] **Step 7: Separate generic and AWS image targets**
+
+Keep the default `runner` targets free of AWS network downloads and trust assets. Add explicit `aws-runner` targets that layer in the RDS CA bundle. Configure CDK assets to build `aws-runner`; Compose and ordinary `docker build` continue to use `runner`.
+
+- [ ] **Step 8: Enforce the migration gate in each ECS API task**
+
+Add a nonessential migration init container using the same API image, command it to run the database migration entrypoint, and add an ECS container dependency with condition `SUCCESS` to the API container. Preserve API -> web -> worker service update ordering. Test the synthesized task definition, not only construct dependencies.
+
+- [ ] **Step 9: Update operations documentation**
+
+Document the pre-release baseline, first-deploy behavior, advisory-lock safety when several API tasks initialize concurrently, expand/contract requirements after the first release, generic versus AWS image targets, and the bounded connection budget.
+
+- [ ] **Step 10: Run full acceptance**
+
+Run package tests, `pnpm check`, `pnpm format:check`, fresh-volume migrations and PostgreSQL integration tests, generic Compose builds and smoke tests, AWS-target builds, CDK tests and synthesis, generated-artifact inspection, forbidden-symbol scans, `git diff --check`, and scoped teardown. Verify generic images contain no RDS CA bundle or AWS download dependency and AWS targets do contain the configured CA bundle.
