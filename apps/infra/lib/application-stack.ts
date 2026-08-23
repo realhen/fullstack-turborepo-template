@@ -1,13 +1,16 @@
 import path from 'node:path'
 import * as cdk from 'aws-cdk-lib'
+import * as acm from 'aws-cdk-lib/aws-certificatemanager'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
 import * as ecs from 'aws-cdk-lib/aws-ecs'
 import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns'
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2'
 import * as logs from 'aws-cdk-lib/aws-logs'
+import * as wafv2 from 'aws-cdk-lib/aws-wafv2'
 import type { Construct } from 'constructs'
 
 interface ApplicationStackProps extends cdk.StackProps {
+  certificateArn: string
   projectName: string
 }
 
@@ -15,6 +18,11 @@ export class ApplicationStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ApplicationStackProps) {
     super(scope, id, props)
 
+    const certificate = acm.Certificate.fromCertificateArn(
+      this,
+      'Certificate',
+      props.certificateArn,
+    )
     const repoRoot = path.resolve(import.meta.dirname, '../../..')
     const vpc = new ec2.Vpc(this, 'Vpc', {
       maxAzs: 2,
@@ -92,6 +100,7 @@ export class ApplicationStack extends cdk.Stack {
       {
         assignPublicIp: false,
         circuitBreaker: { rollback: true },
+        certificate,
         cluster,
         desiredCount: 1,
         enableExecuteCommand: true,
@@ -99,6 +108,7 @@ export class ApplicationStack extends cdk.Stack {
         maxHealthyPercent: 200,
         minHealthyPercent: 100,
         publicLoadBalancer: true,
+        redirectHTTP: true,
         runtimePlatform: {
           cpuArchitecture: ecs.CpuArchitecture.X86_64,
           operatingSystemFamily: ecs.OperatingSystemFamily.LINUX,
@@ -133,6 +143,39 @@ export class ApplicationStack extends cdk.Stack {
       },
     )
 
+    const webAcl = new wafv2.CfnWebACL(this, 'WebAcl', {
+      defaultAction: { allow: {} },
+      scope: 'REGIONAL',
+      visibilityConfig: {
+        cloudWatchMetricsEnabled: true,
+        metricName: `${props.projectName}-web-acl`,
+        sampledRequestsEnabled: true,
+      },
+      rules: [
+        {
+          action: { block: {} },
+          name: 'IpRateLimit',
+          priority: 0,
+          statement: {
+            rateBasedStatement: {
+              aggregateKeyType: 'IP',
+              limit: 500,
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: `${props.projectName}-ip-rate-limit`,
+            sampledRequestsEnabled: true,
+          },
+        },
+      ],
+    })
+
+    new wafv2.CfnWebACLAssociation(this, 'WebAclAssociation', {
+      resourceArn: webService.loadBalancer.loadBalancerArn,
+      webAclArn: webAcl.attrArn,
+    })
+
     webService.targetGroup.configureHealthCheck({
       healthyHttpCodes: '200',
       path: '/health',
@@ -161,7 +204,7 @@ export class ApplicationStack extends cdk.Stack {
       .scaleOnCpuUtilization('WebCpuScaling', { targetUtilizationPercent: 70 })
 
     new cdk.CfnOutput(this, 'ApplicationUrl', {
-      value: `http://${webService.loadBalancer.loadBalancerDnsName}`,
+      value: `https://${webService.loadBalancer.loadBalancerDnsName}`,
     })
   }
 }
