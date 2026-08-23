@@ -4,7 +4,12 @@ import {
   SwaggerModule,
   type OpenAPIObject,
 } from '@nestjs/swagger'
-import { Health, Principal, Project, ProjectMembership } from './openapi.models'
+import { Principal } from './auth/presentation/principal.presentation-model'
+import { Health } from './health/health.presentation-model'
+import {
+  Project,
+  ProjectMembership,
+} from './projects/presentation/project.presentation-models'
 
 export function createOpenApiDocument(app: INestApplication): OpenAPIObject {
   const config = new DocumentBuilder()

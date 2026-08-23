@@ -1,6 +1,6 @@
 import { Controller, Get } from '@nestjs/common'
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger'
-import { Principal as PrincipalModel } from '../../openapi.models'
+import { Principal as PrincipalModel } from '../../auth/presentation/principal.presentation-model'
 import {
   CurrentPrincipal,
   RequireAuthenticated,

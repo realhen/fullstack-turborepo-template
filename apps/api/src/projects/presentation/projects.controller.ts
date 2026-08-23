@@ -6,7 +6,7 @@ import {
   ApiParam,
   ApiTags,
 } from '@nestjs/swagger'
-import { ProjectMembership as ProjectMembershipModel } from '../../openapi.models'
+import { ProjectMembership as ProjectMembershipModel } from './project.presentation-models'
 import {
   CurrentPrincipal,
   CurrentProject,

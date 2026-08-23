@@ -16,8 +16,8 @@ import {
   DisabledAuthenticationAdapter,
   LocalTokenAuthenticationAdapter,
   OidcJwksAuthenticationAdapter,
-  type AuthenticationAdapter,
 } from './infrastructure/authentication.adapter'
+import type { AuthenticationAdapter } from './domain/authentication.adapter'
 
 @Module({
   imports: [DatabaseModule],

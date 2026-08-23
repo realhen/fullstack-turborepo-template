@@ -1,5 +1,5 @@
 import { Injectable, Inject } from '@nestjs/common'
-import type { AuthenticationAdapter } from '../infrastructure/authentication.adapter'
+import type { AuthenticationAdapter } from '../domain/authentication.adapter'
 import {
   IDENTITY_RESOLVER,
   type IdentityResolver,

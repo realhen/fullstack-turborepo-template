@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'node:crypto'
 import type { Principal } from '../domain/principal'
+import type { AuthenticationAdapter } from '../domain/authentication.adapter'
 
 interface JwtClaims {
   sub?: string
@@ -12,10 +13,6 @@ interface JwtClaims {
 }
 
 export class AuthenticationError extends Error {}
-
-export interface AuthenticationAdapter {
-  authenticate(token: string): Promise<Principal>
-}
 
 /** Secure default: protected routes never authenticate without configuration. */
 export class DisabledAuthenticationAdapter implements AuthenticationAdapter {
