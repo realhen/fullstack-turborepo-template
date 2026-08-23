@@ -5,12 +5,13 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "clean": "rm -rf .turbo cdk.out dist",
+    "clean": "node -e \"for (const path of ['.turbo', 'cdk.out', 'dist']) require('node:fs').rmSync(path, { recursive: true, force: true })\"",
     "deploy": "cdk deploy --all",
     "destroy": "cdk destroy --all",
     "diff": "cdk diff",
-    "lint": "eslint bin lib --max-warnings=0",
+    "lint": "eslint bin lib test --max-warnings=0",
     "synth": "cdk synth",
+    "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "aws-cdk": "catalog:",
     "eslint": "catalog:",
     "tsx": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

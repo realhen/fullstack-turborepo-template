@@ -16,9 +16,12 @@
     "dev:api": "turbo run dev --filter=@repo/api",
     "dev:containers": "docker compose up --build",
     "dev:web": "turbo run dev --filter=@repo/web",
+    "db:migrate": "pnpm --filter @repo/database build && pnpm --filter @repo/database migrate",
+    "db:seed": "pnpm --filter @repo/database build && pnpm --filter @repo/database seed",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "lint": "turbo run lint",
+    "openapi:generate": "pnpm --filter @repo/api openapi:generate",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck"
   },

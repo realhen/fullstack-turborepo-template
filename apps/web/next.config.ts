@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   output: 'standalone',
   outputFileTracingRoot: path.join(import.meta.dirname, '../..'),
   reactStrictMode: true,
-  transpilePackages: ['@repo/ui'],
+  transpilePackages: ['@repo/api-client', '@repo/ui'],
 }
 
 export default nextConfig

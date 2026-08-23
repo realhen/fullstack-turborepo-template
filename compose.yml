@@ -1,13 +1,88 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: app
+      POSTGRES_PASSWORD: local-postgres-password
+      POSTGRES_USER: app
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U app -d app']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  localstack:
+    image: localstack/localstack:4
+    environment:
+      SERVICES: sqs
+    healthcheck:
+      test: ['CMD-SHELL', 'awslocal sqs get-queue-url --queue-name saas-async']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    ports:
+      - '4566:4566'
+    volumes:
+      - ./scripts/localstack-init.sh:/etc/localstack/init/ready.d/10-create-queues.sh:ro
+
+  migrate:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ['node', 'node_modules/@repo/database/dist/migrate.js']
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://app:local-postgres-password@postgres:5432/app
+      NODE_ENV: development
+    restart: 'no'
+
+  seed:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    command: ['node', 'node_modules/@repo/database/dist/seed.js']
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      AUTH_LOCAL_SUBJECT: local-developer
+      DATABASE_SEED_LOCAL: 'true'
+      DATABASE_URL: postgresql://app:local-postgres-password@postgres:5432/app
+      NODE_ENV: development
+    restart: 'no'
+
   api:
     build:
       context: .
       dockerfile: apps/api/Dockerfile
+    depends_on:
+      seed:
+        condition: service_completed_successfully
     environment:
+      AUTH_LOCAL_EMAIL: developer@example.test
+      AUTH_LOCAL_ORGANIZATION_ID: 00000000-0000-4000-8000-000000000001
+      AUTH_LOCAL_ORGANIZATION_NAME: Local organization
+      AUTH_LOCAL_ORGANIZATION_SLUG: local-org
+      AUTH_LOCAL_PROJECT_ID: 00000000-0000-4000-8000-000000000002
+      AUTH_LOCAL_PROJECT_NAME: Local project
+      AUTH_LOCAL_SCOPES: profile:read,organizations:read
+      AUTH_LOCAL_SUBJECT: local-developer
+      AUTH_LOCAL_TOKEN: local-development-token-change-me-1234567890
+      AUTH_MODE: local
+      BILLING_PROVIDER: local
       CORS_ORIGIN: http://localhost:3000
+      DATABASE_URL: postgresql://app:local-postgres-password@postgres:5432/app
       ENABLE_SWAGGER: 'true'
-      NODE_ENV: production
+      LOCAL_BILLING_WEBHOOK_SECRET: local-stripe-style-webhook-secret
+      NODE_ENV: development
       PORT: 3001
+      WORKER_SECRET: local-worker-secret-change-me
     healthcheck:
       test:
         [
@@ -20,9 +95,30 @@ services:
         ]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
     ports:
       - '3001:3001'
+
+  worker:
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    depends_on:
+      api:
+        condition: service_healthy
+      localstack:
+        condition: service_healthy
+    environment:
+      AWS_ACCESS_KEY_ID: test
+      AWS_ENDPOINT_URL_SQS: http://localstack:4566
+      AWS_REGION: us-east-1
+      AWS_SECRET_ACCESS_KEY: test
+      BILLING_PROCESSOR_URL: http://api:3001/api/v1/internal/billing/jobs
+      BILLING_SQS_QUEUE_URL: http://localstack:4566/000000000000/saas-async
+      BILLING_WORKER_ADAPTER: sqs
+      DATABASE_URL: postgresql://app:local-postgres-password@postgres:5432/app
+      NODE_ENV: development
+      WORKER_SECRET: local-worker-secret-change-me
 
   web:
     build:
@@ -32,9 +128,13 @@ services:
       api:
         condition: service_healthy
     environment:
+      API_AUTH_TOKEN: local-development-token-change-me-1234567890
       API_URL: http://api:3001
       HOSTNAME: 0.0.0.0
       NODE_ENV: production
       PORT: 3000
     ports:
       - '3000:3000'
+
+volumes:
+  postgres-data:

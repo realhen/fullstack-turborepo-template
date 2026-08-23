@@ -4,9 +4,10 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "clean": "rm -rf .turbo coverage dist",
+    "clean": "node -e \"for (const path of ['.turbo', 'coverage', 'dist']) require('node:fs').rmSync(path, { recursive: true, force: true })\"",
     "dev": "nest start --watch",
     "lint": "eslint src test --max-warnings=0",
+    "openapi:generate": "pnpm --filter @repo/database build && tsx scripts/generate-openapi.ts",
     "start": "node dist/main.js",
     "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
@@ -19,12 +20,16 @@
     "@nestjs/platform-express": "catalog:",
     "@nestjs/swagger": "catalog:",
     "@nestjs/throttler": "catalog:",
+    "@repo/database": "workspace:*",
     "class-transformer": "catalog:",
     "class-validator": "catalog:",
     "compression": "catalog:",
     "helmet": "catalog:",
+    "jose": "catalog:",
+    "pg": "catalog:",
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:",
+    "stripe": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
@@ -34,10 +39,13 @@
     "@repo/eslint-config": "workspace:*",
     "@repo/typescript-config": "workspace:*",
     "@types/compression": "catalog:",
+    "@types/express": "catalog:",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "@types/supertest": "catalog:",
     "eslint": "catalog:",
     "supertest": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

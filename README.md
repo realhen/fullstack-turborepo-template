@@ -1,115 +1,208 @@
-# Full-stack Turborepo Template
+# SaaS Turborepo Template
 
-A general-purpose TypeScript monorepo for shipping a separate Next.js frontend, NestJS API, and AWS CDK deployment stack without carrying product-specific architecture into every new app.
+A production-oriented TypeScript SaaS foundation with a Next.js frontend,
+NestJS API, PostgreSQL tenancy, Stripe billing, an asynchronous worker, and AWS
+CDK infrastructure. It is designed to run completely locally before anything
+is deployed.
 
-## What is included
+## Included
 
-| Path                         | Purpose                                                                                                                          |
-| ---------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| `apps/web`                   | Next.js App Router frontend, Tailwind CSS, standalone container output                                                           |
-| `apps/api`                   | NestJS API with validated configuration, request validation, rate limiting, security headers, Swagger, health checks, and Vitest |
-| `apps/infra`                 | AWS CDK stack for a VPC, ECS Fargate services, service discovery, autoscaling, and an application load balancer                  |
-| `packages/ui`                | Small source-first React component package; replace or extend it with your design system                                         |
-| `packages/eslint-config`     | Shared flat ESLint configuration for TypeScript, Next.js, and NestJS                                                             |
-| `packages/typescript-config` | Strict shared TypeScript configurations                                                                                          |
+| Area       | What is ready                                                                                                                                                         |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web        | Next.js App Router SaaS shell, organization/project selector, generated API client, graceful auth/error states, optional PostHog                                      |
+| API        | NestJS, OpenAPI, OIDC/local authentication adapters, durable identity linking, organization/project authorization, validation, throttling, structured errors and logs |
+| SaaS data  | Users, external identities, organizations, projects, memberships, roles, permissions, invitations, service accounts, API keys, and audit events                       |
+| Billing    | Controlled plan catalog, Stripe Checkout and Billing Portal, signed/idempotent webhooks, subscription/invoice/entitlement projections, local offline provider         |
+| Async work | Transactional webhook inbox/outbox, SQS worker, retries and leases, LocalStack adapter                                                                                |
+| AWS        | ECS Fargate web/API/worker, RDS PostgreSQL, SQS/DLQ, WAF, HTTPS ALB, Cloud Map, Secrets Manager, autoscaling, CloudWatch dashboard and alarms                         |
 
-The frontend and backend remain independent applications. There is intentionally no shared contracts package: API boundaries can evolve through OpenAPI, generated clients, or whichever integration style fits the new product.
+Enterprise identity features such as SAML SSO and directory synchronization are
+intentionally outside this template.
 
-## Start a new app
+## Repository layout
 
-1. Click **Use this template** on GitHub and clone the generated repository.
-2. Install Node.js 24 and enable Corepack.
-3. Bootstrap the project name and local environment files.
-4. Install dependencies.
+- `apps/web` — browser experience and server-rendered API consumption.
+- `apps/api` — business rules and all authoritative auth/billing decisions.
+- `apps/worker` — durable asynchronous billing processing.
+- `apps/infra` — AWS CDK production stack.
+- `packages/api-client` — generated OpenAPI types and the only frontend API transport.
+- `packages/database` — schema, reviewed SQL migrations, RLS helpers, repositories, and local seed.
+- `packages/billing` — provider-neutral outbox contracts and dispatcher.
+- `packages/ui` — reusable React primitives.
+
+## Run the entire product locally
+
+Requirements are Docker with Compose. No AWS account, hosted identity provider,
+or Stripe account is needed.
+
+```bash
+docker compose up --build --wait
+```
+
+This starts PostgreSQL, applies migrations, seeds the local organization and
+project, creates a LocalStack SQS queue, then starts the API, worker, and web
+app. The local billing provider never contacts Stripe.
+
+- Web: <http://localhost:3000>
+- API health: <http://localhost:3001/api/v1/health>
+- Swagger: <http://localhost:3001/api/docs>
+- PostgreSQL: `localhost:5432`
+- LocalStack: `localhost:4566`
+
+The development bearer token is documented in the example environment files
+and is wired into both local containers. It is deliberately rejected when
+`NODE_ENV=production`.
+
+To reset all local state:
+
+```bash
+docker compose down --volumes --remove-orphans
+```
+
+## Hot-reload development
+
+Install Node.js 24 and enable Corepack, then copy the example environments:
 
 ```bash
 corepack enable
-pnpm bootstrap --name my-app
 pnpm install
-```
-
-`pnpm bootstrap` changes the root project name, updates the CDK context, and creates app `.env` files without overwriting existing ones. Workspace package names stay under the neutral `@repo/*` namespace, so a new project does not require a broad rename.
-
-## Local development
-
-No AWS account, CDK bootstrap, or cloud deployment is required to develop or test this template.
-
-### Native development with hot reload
-
-```bash
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env
+docker compose up -d postgres localstack
+pnpm db:migrate
+DATABASE_SEED_LOCAL=true pnpm db:seed
 pnpm dev
 ```
 
-This starts Next.js and NestJS concurrently. Changes in either application reload locally.
-
-### Containerized, production-like development
+Useful commands:
 
 ```bash
-pnpm dev:containers
-# equivalent: docker compose up --build
+pnpm check             # lint, typecheck, test, and build every workspace
+pnpm format:check      # verify formatting
+pnpm openapi:generate  # regenerate the Nest OpenAPI snapshot
+pnpm --filter @repo/api-client generate
+pnpm dev:containers    # production-like local stack
 ```
 
-Docker Compose builds the same Dockerfiles used by CDK, starts both services, and wires the web container to the API container. CI builds and starts this stack, then checks its health endpoints and web-to-API connection. This is useful in cloud development environments and for testing the production container layout without deploying AWS infrastructure.
+## Authentication and authorization
 
-Open either local workflow at:
+The backend accepts any standards-compliant OIDC issuer, so Supabase, WorkOS,
+Auth0, Cognito, and similar providers can be swapped without changing business
+services. Configure:
 
-- Web: [http://localhost:3000](http://localhost:3000)
-- API: [http://localhost:3001/api/v1](http://localhost:3001/api/v1)
-- Swagger (local only): [http://localhost:3001/api/docs](http://localhost:3001/api/docs)
-- API health: [http://localhost:3001/api/v1/health](http://localhost:3001/api/v1/health)
+```dotenv
+AUTH_MODE=oidc
+AUTH_ISSUER=https://issuer.example.com/
+AUTH_JWKS_URI=https://issuer.example.com/.well-known/jwks.json
+AUTH_AUDIENCE=your-api-audience
+# AUTH_CLIENT_ID can be used instead of AUTH_AUDIENCE when the provider uses client_id.
+```
 
-## Everyday commands
+JWT signatures, issuer, and audience/client ID are validated first. An existing
+external identity is resolved to the application user. A first login is
+provisioned only when the configured issuer asserts a verified email; unverified
+or missing emails fail closed. Provider scopes never substitute for application
+roles.
+
+The frontend reads an access token from a configurable Secure, HttpOnly session
+cookie (`AUTH_ACCESS_TOKEN_COOKIE`) and forwards it server-to-server. A fixed
+`API_AUTH_TOKEN` exists only for local automation. The provider-specific login
+and callback UI is deliberately a small adapter boundary: configure the chosen
+provider to set that cookie rather than coupling the template to one vendor.
+
+Authorization is enforced in the API through organization permissions and
+project roles. Default roles are owner, admin, member, and viewer. PostgreSQL RLS
+adds a second tenant boundary by setting the authorized organization and actor
+inside every resource transaction and switching to the non-owner
+`saas_runtime` role.
+
+Invitations store only SHA-256 token hashes, expire, can be revoked, and return
+the raw credential once. API keys use per-key scrypt hashes and are also shown
+only once. Management actions write tenant-scoped audit events.
+
+## Stripe billing
+
+Browser input uses allow-listed plan codes; Stripe price IDs and secrets remain
+server-only. Configure the four keys in `apps/api/.env.example`, then send Stripe
+events to:
+
+```text
+POST /api/v1/billing/stripe/webhook
+```
+
+The handler verifies the raw request with Stripe's SDK and commits the webhook
+inbox record and outbox message in one transaction before returning success.
+The worker publishes through SQS and calls the authenticated internal processor.
+Checkout redirects are never treated as payment authority; subscription,
+invoice, and entitlement state comes from verified webhooks and reconciliation.
+
+Use Stripe test mode and the Stripe CLI when testing the real provider locally.
+Keep `BILLING_PROVIDER=local` for fully offline feature development.
+
+## Type-safe API boundary
+
+All frontend calls use `@repo/api-client`; direct backend `fetch` and Axios calls
+are blocked by the web ESLint configuration. The contract flow is:
+
+```text
+Nest controllers -> OpenAPI snapshot -> generated TypeScript paths -> openapi-fetch -> Next.js
+```
+
+CI regenerates both OpenAPI artifacts and fails if committed output is stale.
+When changing an endpoint, update its Swagger response metadata and commit the
+regenerated client in the same pull request.
+
+## Analytics and operations
+
+PostHog is disabled unless both `NEXT_PUBLIC_POSTHOG_KEY` and optionally its host
+are configured. The default uses in-memory persistence, disables autocapture,
+and does not identify users, reducing accidental PII collection. Add only an
+explicit, reviewed event taxonomy for product analytics.
+
+The API emits JSON request logs with propagated request IDs and a stable error
+envelope. The AWS stack enables ECS Container Insights and creates a CloudWatch
+dashboard plus alarms for API 5xx responses, queue age, dead-letter messages,
+and database CPU. An optional alarm email subscribes to the generated SNS topic.
+
+## AWS deployment
+
+CDK requires an existing regional ACM certificate and domain. Stripe is enabled
+when `applicationSecretsArn` points to a JSON secret containing:
+
+- `STRIPE_SECRET_KEY`
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_PRICE_STARTER_MONTHLY`
+- `STRIPE_PRICE_PRO_MONTHLY`
+
+Example:
 
 ```bash
-pnpm dev              # Run web and API development servers
-pnpm dev:web          # Run only Next.js
-pnpm dev:api          # Run only NestJS
-pnpm check            # Lint, typecheck, test, and build everything
-pnpm check:affected   # Run checks only for changed packages and dependents
-pnpm format           # Format the repository
-pnpm dev:containers   # Run the full stack with Docker Compose
+pnpm --filter @repo/infra exec cdk deploy \
+  -c certificateArn="$CERTIFICATE_ARN" \
+  -c domainName=app.example.com \
+  -c hostedZoneId="$HOSTED_ZONE_ID" \
+  -c hostedZoneName=example.com \
+  -c applicationSecretsArn="$APPLICATION_SECRETS_ARN" \
+  -c authIssuer=https://issuer.example.com/ \
+  -c authJwksUri=https://issuer.example.com/.well-known/jwks.json \
+  -c authAudience=your-api-audience \
+  -c alarmEmail=on-call@example.com
 ```
 
-Turbo caches deterministic tasks and runs the workspace graph in parallel. CI runs the complete quality gate on pushes to `main` and pull requests. Dependabot keeps npm and GitHub Actions dependencies current.
+The stack outputs a migration task definition, cluster, private subnet IDs, and
+security group. Run that one-off ECS task before rolling out a schema-dependent
+application version. The migration user must be able to create the non-login
+`saas_runtime` role on first deployment; subsequent runs are checksum-verified
+and serialized by a PostgreSQL advisory lock.
 
-## Configuration
+RDS deletion protection, encrypted storage, Multi-AZ, 14-day backups, secret
+rotation, private subnets, an SQS DLQ, HTTPS, WAF rules, and rolling deployment
+circuit breakers are enabled by default. The stack creates billable resources;
+always review `cdk diff` and AWS pricing first.
 
-Never commit `.env` files. Document each new variable in the nearest `.env.example`.
+## CI guarantees
 
-The web app uses `API_URL` only on the server. Use `NEXT_PUBLIC_API_URL` only when browser code truly needs a public API address; values with the `NEXT_PUBLIC_` prefix are embedded into the client bundle.
-
-The API validates configuration at startup. Add application-specific fields to `apps/api/src/env.ts` so an invalid deployment fails immediately instead of failing on its first request. Swagger is enabled by `ENABLE_SWAGGER=true`; the local environment files and Docker Compose set it, while CDK production deployments leave it disabled.
-
-## Deployment
-
-The included AWS CDK stack builds both Dockerfiles, deploys them to private ECS Fargate tasks, exposes the web app through a public HTTPS application load balancer, and routes `/api/*` to NestJS. Internal web-to-API traffic uses Cloud Map service discovery.
-
-CDK deployment requires an existing regional ACM certificate. This prevents an accidental HTTP-only deployment. Create or validate the certificate in the same AWS Region as the stack, then point your domain record to the load balancer.
-
-```bash
-aws configure sso
-export CERTIFICATE_ARN=arn:aws:acm:us-east-1:123456789012:certificate/your-certificate-id
-pnpm --filter @repo/infra exec cdk bootstrap
-pnpm --filter @repo/infra exec cdk diff -c certificateArn="$CERTIFICATE_ARN"
-pnpm --filter @repo/infra exec cdk deploy -c certificateArn="$CERTIFICATE_ARN"
-```
-
-The stack creates billable AWS resources, including a NAT gateway, load balancer, WAF web ACL, and two Fargate services. Review `cdk diff` and AWS pricing before deployment. A regional WAF rule limits a source IP to 500 requests per five-minute evaluation window, so the basic abuse limit stays effective even when the API service scales out. Add product-specific quotas or a shared rate-limit store when you need identity- or endpoint-aware limits.
-
-Destroy a test stack when it is no longer needed:
-
-```bash
-pnpm --filter @repo/infra destroy
-```
-
-## Adding product capabilities
-
-- Database: add a dedicated data package only after choosing the datastore and migration tool.
-- Authentication: keep authorization enforcement in the API and pass only safe session state to the frontend.
-- API clients: generate from Swagger/OpenAPI when the interface becomes large enough to justify it.
-- Shared code: add a package only when two consumers genuinely share stable, domain-agnostic behavior.
-- Production operations: add HTTPS, domain records, secrets, persistence, alarms, and deployment workflows for the target environment.
-
-## Dependency policy
-
-Versions are pinned through `pnpm-lock.yaml` and declared with compatible ranges in the workspace catalog. The template intentionally uses TypeScript 6 and ESLint 9 because the current TypeScript-ESLint and React lint ecosystems do not yet fully support TypeScript 7 and ESLint 10. Upgrade those majors when their peer dependency ranges catch up.
+Pull requests run formatting, lint, typechecking, tests, builds, OpenAPI drift
+checks, CDK synthesis, real PostgreSQL migration/RLS integration tests, and a
+full Docker Compose smoke test. Dependabot keeps npm and GitHub Actions updates
+visible for review.

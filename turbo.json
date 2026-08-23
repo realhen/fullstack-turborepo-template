@@ -6,10 +6,23 @@
       "dependsOn": ["^build"],
       "env": [
         "API_URL",
+        "AUTH_AUDIENCE",
+        "AUTH_ACCESS_TOKEN_COOKIE",
+        "AUTH_CLIENT_ID",
+        "AUTH_ISSUER",
+        "AUTH_JWKS_URI",
+        "AUTH_MODE",
+        "BILLING_PROVIDER",
         "CDK_DEFAULT_ACCOUNT",
         "CDK_DEFAULT_REGION",
+        "DATABASE_SECRET",
+        "DATABASE_URL",
         "NODE_ENV",
-        "NEXT_PUBLIC_API_URL"
+        "NEXT_PUBLIC_API_URL",
+        "NEXT_PUBLIC_POSTHOG_HOST",
+        "NEXT_PUBLIC_POSTHOG_KEY",
+        "STRIPE_PRICE_PRO_MONTHLY",
+        "STRIPE_PRICE_STARTER_MONTHLY"
       ],
       "outputs": [".next/**", "!.next/cache/**", "cdk.out/**", "dist/**"]
     },
@@ -18,12 +31,16 @@
       "persistent": true
     },
     "lint": {
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "typecheck": {
+      "dependsOn": ["^build"],
       "outputs": []
     },
     "test": {
+      "dependsOn": ["^build"],
+      "env": ["DATABASE_RLS_TEST_URL"],
       "outputs": []
     },
     "clean": {
