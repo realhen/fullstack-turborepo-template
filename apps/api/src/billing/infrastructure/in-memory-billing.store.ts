@@ -20,6 +20,7 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
   readonly subscriptions = new Map<string, SubscriptionProjection>()
   readonly invoices = new Map<string, InvoiceProjection>()
   readonly entitlements = new Map<string, EntitlementProjection[]>()
+  readonly entitlementProjectionVersions = new Map<string, Date>()
   readonly events = new Map<string, VerifiedBillingEvent>()
   readonly processedEvents = new Set<string>()
   readonly failedEvents = new Map<string, string>()
@@ -88,18 +89,15 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
     entitlements: EntitlementProjection[],
     providerUpdatedAt: Date,
   ): Promise<void> {
-    const current = this.entitlements.get(billingAccountId)
-    const currentVersion = current?.reduce<Date | undefined>(
-      (latest, entitlement) =>
-        !latest || entitlement.providerUpdatedAt > latest
-          ? entitlement.providerUpdatedAt
-          : latest,
-      undefined,
-    )
-    if (currentVersion && currentVersion > providerUpdatedAt) {
+    const currentVersion =
+      this.entitlementProjectionVersions.get(billingAccountId)
+    // Timestamps do not provide a deterministic stronger ordering key, so an
+    // equal event is deliberately ignored as well as an older one.
+    if (currentVersion && currentVersion >= providerUpdatedAt) {
       return Promise.resolve()
     }
     this.entitlements.set(billingAccountId, entitlements)
+    this.entitlementProjectionVersions.set(billingAccountId, providerUpdatedAt)
     return Promise.resolve()
   }
 

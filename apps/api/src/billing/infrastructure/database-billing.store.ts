@@ -162,14 +162,17 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
         'SELECT id FROM billing_accounts WHERE id = $1 FOR UPDATE',
         [billingAccountId],
       )
-      const version = await client.query<{ provider_updated_at: Date | null }>(
-        `SELECT MAX(provider_updated_at) AS provider_updated_at
-         FROM billing_entitlements
+      const version = await client.query<{ provider_updated_at: Date }>(
+        `SELECT provider_updated_at
+         FROM billing_entitlement_projection_versions
          WHERE billing_account_id = $1`,
         [billingAccountId],
       )
       const currentVersion = version.rows[0]?.provider_updated_at
-      if (currentVersion && new Date(currentVersion) > providerUpdatedAt) return
+      // Equal timestamps are rejected: provider timestamps are not a strict
+      // total order, so accepting an equal replacement could restore access.
+      if (currentVersion && new Date(currentVersion) >= providerUpdatedAt)
+        return
       await client.query(
         'DELETE FROM billing_entitlements WHERE billing_account_id = $1',
         [billingAccountId],
@@ -188,6 +191,15 @@ export class PostgresBillingStore implements BillingRepository, BillingOutbox {
           ],
         )
       }
+      await client.query(
+        `INSERT INTO billing_entitlement_projection_versions
+          (billing_account_id, provider_updated_at, updated_at)
+         VALUES ($1, $2, now())
+         ON CONFLICT (billing_account_id) DO UPDATE
+         SET provider_updated_at = EXCLUDED.provider_updated_at,
+             updated_at = now()`,
+        [billingAccountId, providerUpdatedAt],
+      )
     })
   }
 

@@ -69,4 +69,30 @@ describeDatabase('PostgresBillingStore integration', () => {
       expect.objectContaining({ active: true, featureKey: 'new-feature' }),
     ])
   })
+
+  it('persists an empty projection version and rejects stale or equal restoration', async () => {
+    const newer = new Date('2026-08-23T14:00:00.000Z')
+    await store.replaceEntitlements(billingAccountId, [], newer)
+    for (const version of [
+      new Date('2026-08-23T13:00:00.000Z'),
+      new Date('2026-08-23T14:00:00.000Z'),
+    ]) {
+      await store.replaceEntitlements(
+        billingAccountId,
+        [
+          {
+            active: true,
+            billingAccountId,
+            featureKey: 'stale-feature',
+            providerUpdatedAt: version,
+            source: 'subscription',
+          },
+        ],
+        version,
+      )
+    }
+    expect(
+      (await store.getSummaryForOrganization(organizationId)).entitlements,
+    ).toEqual([])
+  })
 })

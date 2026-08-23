@@ -30,7 +30,10 @@ describeDatabase('PostgresBillingJobStore integration', () => {
     await pool.end()
   })
 
-  async function insertJob(availableAt = new Date()): Promise<string> {
+  async function insertJob(
+    availableAt = new Date(),
+    payload: unknown = undefined,
+  ): Promise<string> {
     const id = randomUUID()
     createdIds.push(id)
     await pool.query(
@@ -38,7 +41,9 @@ describeDatabase('PostgresBillingJobStore integration', () => {
        VALUES ($1, 'billing.integration-test', $2::jsonb, $3)`,
       [
         id,
-        JSON.stringify({ eventId: `evt-${id}`, kind: 'billing.webhook' }),
+        JSON.stringify(
+          payload ?? { eventId: `evt-${id}`, kind: 'billing.webhook' },
+        ),
         availableAt,
       ],
     )
@@ -111,5 +116,52 @@ describeDatabase('PostgresBillingJobStore integration', () => {
         now: new Date(),
       }),
     ).not.toContainEqual(expect.objectContaining({ id: deadJob }))
+  })
+
+  it('terminally dead-letters an expired final attempt instead of stranding it', async () => {
+    const id = await insertJob()
+    await pool.query(
+      `UPDATE billing_outbox
+       SET attempts = 3, lease_token = gen_random_uuid(),
+           lease_expires_at = now() - interval '1 second'
+       WHERE id = $1`,
+      [id],
+    )
+    expect(
+      await stores[0]!.claimBatch({
+        leaseForMilliseconds: 100,
+        limit: 10,
+        maxAttempts: 3,
+        now: new Date(),
+      }),
+    ).not.toContainEqual(expect.objectContaining({ id }))
+    const result = await pool.query<{
+      dead_at: Date | null
+      last_error: string
+    }>('SELECT dead_at, last_error FROM billing_outbox WHERE id = $1', [id])
+    const row = result.rows[0]
+    expect(row).toBeDefined()
+    expect(row?.dead_at).toBeInstanceOf(Date)
+    expect(row?.last_error).toContain('lease expired')
+  })
+
+  it('terminally dead-letters malformed job payloads', async () => {
+    const id = await insertJob(new Date(), { kind: 'unsupported' })
+    expect(
+      await stores[0]!.claimBatch({
+        leaseForMilliseconds: 100,
+        limit: 10,
+        maxAttempts: 3,
+        now: new Date(),
+      }),
+    ).not.toContainEqual(expect.objectContaining({ id }))
+    const result = await pool.query<{
+      dead_at: Date | null
+      last_error: string
+    }>('SELECT dead_at, last_error FROM billing_outbox WHERE id = $1', [id])
+    const row = result.rows[0]
+    expect(row).toBeDefined()
+    expect(row?.dead_at).toBeInstanceOf(Date)
+    expect(row?.last_error).toContain('malformed')
   })
 })

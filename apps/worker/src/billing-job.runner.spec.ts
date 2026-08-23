@@ -25,7 +25,7 @@ function storeWith(jobs: ClaimedBillingJob[]): Omit<
       .mockResolvedValue(true),
     retryOrDead: vi
       .fn<BillingJobStore['retryOrDead']>()
-      .mockResolvedValue({ dead: false }),
+      .mockResolvedValue({ dead: false, updated: true }),
   }
 }
 
@@ -58,6 +58,60 @@ describe('BillingJobRunner', () => {
       },
     ).runOnce()
     expect(store.retryOrDead).toHaveBeenCalledOnce()
+  })
+
+  it('logs a lost lease when completing a successful job no longer updates it', async () => {
+    const store = storeWith([job])
+    store.complete.mockResolvedValue(false)
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    try {
+      await new BillingJobRunner(
+        store,
+        { process: vi.fn().mockResolvedValue(undefined) },
+        {
+          batchSize: 1,
+          leaseMilliseconds: 20,
+          maxAttempts: 3,
+          retryDelayMilliseconds: 1,
+        },
+      ).runOnce()
+
+      expect(error).toHaveBeenCalledWith(
+        expect.stringContaining('"operation":"complete"'),
+      )
+    } finally {
+      error.mockRestore()
+    }
+  })
+
+  it('does not overlap a pending heartbeat lease extension', async () => {
+    vi.useFakeTimers()
+    const store = storeWith([job])
+    store.extendLease.mockReturnValue(new Promise(() => undefined))
+    let finish: (() => void) | undefined
+    const processing = new Promise<void>((resolve) => {
+      finish = resolve
+    })
+
+    try {
+      const run = new BillingJobRunner(
+        store,
+        { process: vi.fn().mockReturnValue(processing) },
+        {
+          batchSize: 1,
+          leaseMilliseconds: 2_000,
+          maxAttempts: 3,
+          retryDelayMilliseconds: 1,
+        },
+      ).runOnce()
+      await vi.advanceTimersByTimeAsync(2_000)
+      expect(store.extendLease).toHaveBeenCalledOnce()
+      finish?.()
+      await run
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('extends the lease while a processor is still running', async () => {
