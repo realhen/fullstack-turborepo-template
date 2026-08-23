@@ -22,6 +22,7 @@ import { assertOrganizationId } from './organization-id.pipe'
 @Injectable()
 export class OrganizationPermissionGuard implements CanActivate {
   constructor(
+    @Inject(Reflector)
     private readonly reflector: Reflector,
     private readonly authentication: AuthenticationService,
     @Inject(ORGANIZATION_PERMISSION_EVALUATOR)
