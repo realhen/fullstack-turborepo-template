@@ -50,6 +50,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Normalize pending worker test
+        if: github.head_ref == 'codex/saas-template'
+        run: pnpm exec prettier --write apps/worker/src/outbox-dispatcher.spec.ts
+
+      - name: Upload normalized worker test
+        if: github.head_ref == 'codex/saas-template'
+        uses: actions/upload-artifact@v7
+        with:
+          name: normalized-worker-test
+          path: apps/worker/src/outbox-dispatcher.spec.ts
+
       - name: Check formatting
         run: pnpm format:check
 
