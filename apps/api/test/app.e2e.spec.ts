@@ -16,7 +16,7 @@ describe('API', () => {
     process.env.AUTH_LOCAL_SCOPES = 'profile:read'
     process.env.AUTH_LOCAL_PROJECT_ID = 'test-project'
     process.env.AUTH_LOCAL_PROJECT_NAME = 'Test project'
-    const { createApp } = await import('../src/bootstrap')
+    const { createApp } = await import('../src/bootstrap.js')
     app = await createApp()
     await app.init()
   })

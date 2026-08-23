@@ -211,6 +211,9 @@ importers:
       '@types/compression':
         specifier: 'catalog:'
         version: 1.8.1
+      '@types/express':
+        specifier: 'catalog:'
+        version: 5.0.6
       '@types/node':
         specifier: 'catalog:'
         version: 26.2.0
