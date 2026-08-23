@@ -23,7 +23,7 @@ export class FoundationStack extends cdk.Stack {
   readonly alarmTopic: sns.ITopic
   readonly apiSecurityGroup: ec2.ISecurityGroup
   readonly cluster: ecs.ICluster
-  readonly database: rds.IDatabaseInstance
+  readonly database: rds.DatabaseInstance
   readonly hostedZone: route53.IHostedZone
   readonly vpc: ec2.IVpc
   readonly workerSecurityGroup: ec2.ISecurityGroup
