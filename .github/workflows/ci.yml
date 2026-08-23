@@ -41,3 +41,30 @@ jobs:
 
       - name: Lint, typecheck, test, and build
         run: pnpm check
+
+
+  containers:
+    needs: quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Build and start local container stack
+        run: docker compose up --build --wait --wait-timeout 120
+
+      - name: Verify container endpoints
+        run: |
+          curl --fail --retry 5 --retry-connrefused http://localhost:3001/api/v1/health
+          curl --fail --retry 5 --retry-connrefused http://localhost:3000/health
+          curl --fail http://localhost:3001/api/docs
+          curl --fail --retry 5 --retry-connrefused http://localhost:3000/ | grep -q 'API .*connected'
+
+      - name: Show container logs on failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop local container stack
+        if: always()
+        run: docker compose down --volumes --remove-orphans
