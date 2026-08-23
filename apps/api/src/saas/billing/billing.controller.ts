@@ -1,7 +1,10 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common'
 import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger'
-import { CurrentPrincipal, RequireAuthenticated } from '../auth/auth.decorators'
-import type { Principal } from '../auth/principal'
+import {
+  CurrentPrincipal,
+  RequireAuthenticated,
+} from '../../common/decorators/auth.decorators'
+import type { Principal } from '../../auth/domain/principal'
 import { OrganizationIdPipe } from '../organizations/organization-id.pipe'
 import { CreateCheckoutDto, CreatePortalDto } from './billing.dto'
 import { BillingService } from './billing.service'

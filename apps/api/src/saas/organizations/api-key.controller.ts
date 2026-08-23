@@ -11,8 +11,8 @@ import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger'
 import {
   CurrentPrincipal,
   RequireOrganizationPermissions,
-} from '../auth/auth.decorators'
-import type { Principal } from '../auth/principal'
+} from '../../common/decorators/auth.decorators'
+import type { Principal } from '../../auth/domain/principal'
 import { OrganizationPermissionGuard } from './organization-permission.guard'
 import { OrganizationIdPipe } from './organization-id.pipe'
 import { CreateApiKeyDto, CreateServiceAccountDto } from './api-key.dto'

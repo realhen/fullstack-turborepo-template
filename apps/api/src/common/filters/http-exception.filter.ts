@@ -6,7 +6,7 @@ import {
   type ExceptionFilter,
 } from '@nestjs/common'
 import type { Response } from 'express'
-import { getRequestId } from './request-context'
+import { getRequestId } from '../middleware/request-context.middleware'
 
 type ErrorBody = {
   error: {

@@ -1,7 +1,7 @@
 import { PreTenantAuthorizationLookup } from '@repo/database'
 import type { Pool } from 'pg'
-import type { IdentityResolver } from './identity-resolver'
-import type { Principal } from './principal'
+import type { IdentityResolver } from '../domain/identity-resolver'
+import type { Principal } from '../domain/principal'
 
 /**
  * Fail-closed resolver. Provisioning is intentionally a separate workflow so

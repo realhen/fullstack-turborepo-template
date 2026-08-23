@@ -1,7 +1,10 @@
 import { Injectable, Inject } from '@nestjs/common'
-import type { AuthenticationAdapter } from './authentication.adapter'
-import { IDENTITY_RESOLVER, type IdentityResolver } from './identity-resolver'
-import type { Principal } from './principal'
+import type { AuthenticationAdapter } from '../infrastructure/authentication.adapter'
+import {
+  IDENTITY_RESOLVER,
+  type IdentityResolver,
+} from '../domain/identity-resolver'
+import type { Principal } from '../domain/principal'
 
 export const AUTHENTICATION_ADAPTER = Symbol('AUTHENTICATION_ADAPTER')
 

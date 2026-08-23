@@ -1,5 +1,5 @@
 import { timingSafeEqual } from 'node:crypto'
-import type { Principal } from './principal'
+import type { Principal } from '../domain/principal'
 
 interface JwtClaims {
   sub?: string

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { ForbiddenException, Inject, Injectable } from '@nestjs/common'
-import type { Principal } from '../auth/principal'
+import type { Principal } from '../../auth/domain/principal'
 import { ControlledPlanCatalog } from './billing.catalog'
 import {
   BILLING_OUTBOX,

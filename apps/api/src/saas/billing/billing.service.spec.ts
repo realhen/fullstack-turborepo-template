@@ -5,7 +5,7 @@ import {
   ServiceUnavailableException,
 } from '@nestjs/common'
 import { describe, expect, it } from 'vitest'
-import type { Principal } from '../auth/principal'
+import type { Principal } from '../../auth/domain/principal'
 import { ControlledPlanCatalog } from './billing.catalog'
 import { DisabledBillingProvider } from './disabled-billing.provider'
 import { BillingProjectionProcessor } from './billing-projection.processor'

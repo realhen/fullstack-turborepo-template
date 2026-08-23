@@ -11,22 +11,7 @@ import { AUDIT_STORE } from './audit/audit.types'
 import { DatabaseAuditReadStore } from './audit/database-audit-read.store'
 import { DatabaseAuditStore } from './audit/database-audit.store'
 import { InMemoryAuditReadStore } from './audit/in-memory-audit-read.store'
-import {
-  DisabledAuthenticationAdapter,
-  LocalTokenAuthenticationAdapter,
-  OidcJwksAuthenticationAdapter,
-  type AuthenticationAdapter,
-} from './auth/authentication.adapter'
-import {
-  AUTHENTICATION_ADAPTER,
-  AuthenticationService,
-} from './auth/authentication.service'
-import { DatabaseIdentityResolver } from './auth/database-identity-resolver'
-import {
-  IDENTITY_RESOLVER,
-  type IdentityResolver,
-} from './auth/identity-resolver'
-import { ScopeGuard } from './auth/scope.guard'
+import { AuthModule } from '../auth/auth.module'
 import { BillingModule } from './billing/billing.module'
 import { ApiKeyController } from './organizations/api-key.controller'
 import { ApiKeyService } from './organizations/api-key.service'
@@ -72,7 +57,7 @@ import { ProjectService } from './projects/project.service'
 import { PROJECT_MEMBERSHIP_STORE } from './projects/project.types'
 
 @Module({
-  imports: [BillingModule, DatabaseModule],
+  imports: [AuthModule, BillingModule, DatabaseModule],
   controllers: [
     ApiKeyController,
     AuditReadController,
@@ -84,46 +69,6 @@ import { PROJECT_MEMBERSHIP_STORE } from './projects/project.types'
     ProjectsController,
   ],
   providers: [
-    {
-      provide: AUTHENTICATION_ADAPTER,
-      inject: [ConfigService],
-      useFactory: (config: ConfigService): AuthenticationAdapter => {
-        const mode = config.getOrThrow<string>('AUTH_MODE')
-        if (mode === 'disabled') return new DisabledAuthenticationAdapter()
-        if (mode === 'oidc') {
-          return new OidcJwksAuthenticationAdapter(
-            config.getOrThrow<string>('AUTH_JWKS_URI'),
-            config.getOrThrow<string>('AUTH_ISSUER'),
-            config.get<string>('AUTH_AUDIENCE'),
-            config.get<string>('AUTH_CLIENT_ID'),
-          )
-        }
-        const email = config.get<string>('AUTH_LOCAL_EMAIL')
-        return new LocalTokenAuthenticationAdapter(
-          config.getOrThrow<string>('AUTH_LOCAL_TOKEN'),
-          {
-            id: config.getOrThrow<string>('AUTH_LOCAL_SUBJECT'),
-            ...(email ? { email } : {}),
-            provider: 'local',
-            scopes: config
-              .getOrThrow<string>('AUTH_LOCAL_SCOPES')
-              .split(/\s*,\s*/)
-              .filter(Boolean),
-          },
-        )
-      },
-    },
-    {
-      provide: IDENTITY_RESOLVER,
-      inject: [DATABASE_POOL],
-      useFactory: (pool: Pool | null): IdentityResolver =>
-        pool
-          ? new DatabaseIdentityResolver(pool)
-          : {
-              resolve: (principal) =>
-                Promise.resolve({ ...principal, userId: principal.id }),
-            },
-    },
     {
       provide: ORGANIZATION_MEMBERSHIP_STORE,
       inject: [ConfigService, DATABASE_POOL],
@@ -231,7 +176,6 @@ import { PROJECT_MEMBERSHIP_STORE } from './projects/project.types'
     ApiKeyService,
     AuditReadService,
     AuditService,
-    AuthenticationService,
     InvitationService,
     OrganizationIdPipe,
     OrganizationManagementService,
@@ -240,15 +184,12 @@ import { PROJECT_MEMBERSHIP_STORE } from './projects/project.types'
     ProjectIdPipe,
     ProjectManagementService,
     ProjectService,
-    ScopeGuard,
   ],
   exports: [
     API_KEY_STORE,
     AUDIT_READ_STORE,
     AUDIT_STORE,
-    AUTHENTICATION_ADAPTER,
-    AuthenticationService,
-    IDENTITY_RESOLVER,
+    AuthModule,
     INVITATION_STORE,
     ORGANIZATION_MANAGEMENT_STORE,
     ORGANIZATION_MEMBERSHIP_STORE,
@@ -256,7 +197,6 @@ import { PROJECT_MEMBERSHIP_STORE } from './projects/project.types'
     PROJECT_MANAGEMENT_STORE,
     PROJECT_MEMBERSHIP_STORE,
     ProjectService,
-    ScopeGuard,
   ],
 })
 export class SaasModule {}

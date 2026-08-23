@@ -6,14 +6,14 @@ import {
   type ExecutionContext,
 } from '@nestjs/common'
 import { Reflector } from '@nestjs/core'
-import { ProjectService } from '../projects/project.service'
-import { assertProjectId } from '../projects/project-id.pipe'
+import { ProjectService } from '../../saas/projects/project.service'
+import { assertProjectId } from '../../saas/projects/project-id.pipe'
 import {
   AUTHORIZATION_REQUIREMENT,
   type AuthorizationRequirement,
-} from './auth.decorators'
-import { AuthenticationService } from './authentication.service'
-import type { RequestWithPrincipal } from './principal'
+} from '../decorators/auth.decorators'
+import { AuthenticationService } from '../../auth/application/authentication.service'
+import type { RequestWithPrincipal } from '../../auth/domain/principal'
 
 @Injectable()
 export class ScopeGuard implements CanActivate {

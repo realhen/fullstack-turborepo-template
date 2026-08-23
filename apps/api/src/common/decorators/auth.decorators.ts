@@ -3,8 +3,11 @@ import {
   type ExecutionContext,
   SetMetadata,
 } from '@nestjs/common'
-import type { ProjectMembership } from '../projects/project.types'
-import type { Principal, RequestWithPrincipal } from './principal'
+import type { ProjectMembership } from '../../saas/projects/project.types'
+import type {
+  Principal,
+  RequestWithPrincipal,
+} from '../../auth/domain/principal'
 
 export const AUTHORIZATION_REQUIREMENT = 'saas:authorization-requirement'
 

@@ -3,8 +3,8 @@ import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger'
 import {
   CurrentPrincipal,
   RequireOrganizationPermissions,
-} from '../auth/auth.decorators'
-import type { Principal } from '../auth/principal'
+} from '../../common/decorators/auth.decorators'
+import type { Principal } from '../../auth/domain/principal'
 import { OrganizationPermissionGuard } from '../organizations/organization-permission.guard'
 import { OrganizationIdPipe } from '../organizations/organization-id.pipe'
 import { ListAuditEventsDto } from './audit-read.dto'

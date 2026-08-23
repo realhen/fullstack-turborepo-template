@@ -7,7 +7,7 @@ import { AppService } from './app.service'
 import { validateEnvironment } from './env'
 import { HealthController } from './health/health.controller'
 import { SaasModule } from './saas/saas.module'
-import { ScopeGuard } from './saas/auth/scope.guard'
+import { ScopeGuard } from './common/guards/scope.guard'
 
 @Module({
   imports: [

@@ -12,8 +12,8 @@ import {
   CurrentPrincipal,
   RequireAuthenticated,
   RequireOrganizationPermissions,
-} from '../auth/auth.decorators'
-import type { Principal } from '../auth/principal'
+} from '../../common/decorators/auth.decorators'
+import type { Principal } from '../../auth/domain/principal'
 import { OrganizationPermissionGuard } from './organization-permission.guard'
 import { OrganizationIdPipe } from './organization-id.pipe'
 import { AcceptInvitationDto, CreateInvitationDto } from './invitation.dto'

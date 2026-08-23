@@ -1,8 +1,11 @@
 import { Controller, Get } from '@nestjs/common'
 import { ApiBearerAuth, ApiOkResponse, ApiTags } from '@nestjs/swagger'
 import { Principal as PrincipalModel } from '../../openapi.models'
-import { CurrentPrincipal, RequireAuthenticated } from '../auth/auth.decorators'
-import type { Principal } from '../auth/principal'
+import {
+  CurrentPrincipal,
+  RequireAuthenticated,
+} from '../../common/decorators/auth.decorators'
+import type { Principal } from '../../auth/domain/principal'
 
 @ApiTags('identity')
 @ApiBearerAuth()

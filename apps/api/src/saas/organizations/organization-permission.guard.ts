@@ -10,9 +10,9 @@ import { Reflector } from '@nestjs/core'
 import {
   ORGANIZATION_PERMISSION_REQUIREMENT,
   type OrganizationPermissionRequirement,
-} from '../auth/auth.decorators'
-import { AuthenticationService } from '../auth/authentication.service'
-import type { RequestWithPrincipal } from '../auth/principal'
+} from '../../common/decorators/auth.decorators'
+import { AuthenticationService } from '../../auth/application/authentication.service'
+import type { RequestWithPrincipal } from '../../auth/domain/principal'
 import {
   ORGANIZATION_PERMISSION_EVALUATOR,
   type OrganizationPermissionEvaluator,

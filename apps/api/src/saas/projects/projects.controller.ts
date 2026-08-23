@@ -11,8 +11,8 @@ import {
   CurrentPrincipal,
   CurrentProject,
   RequireProjectScopes,
-} from '../auth/auth.decorators'
-import type { Principal } from '../auth/principal'
+} from '../../common/decorators/auth.decorators'
+import type { Principal } from '../../auth/domain/principal'
 import { AddProjectMemberDto } from './projects.dto'
 import { ProjectIdPipe } from './project-id.pipe'
 import { ProjectService } from './project.service'

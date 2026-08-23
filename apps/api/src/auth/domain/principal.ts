@@ -1,4 +1,4 @@
-import type { ProjectMembership } from '../projects/project.types'
+import type { ProjectMembership } from '../../saas/projects/project.types'
 
 /** A provider-neutral identity that application authorization consumes. */
 export type Principal = {

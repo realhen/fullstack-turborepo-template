@@ -9,9 +9,9 @@ import type { NextFunction, Request, Response } from 'express'
 import helmet from 'helmet'
 import { AppModule } from './app.module'
 import type { Environment } from './env'
-import { HttpExceptionFilter } from './observability/http-exception.filter'
+import { HttpExceptionFilter } from './common/filters/http-exception.filter'
 import { createOpenApiDocument } from './openapi'
-import { requestContextMiddleware } from './observability/request-context'
+import { requestContextMiddleware } from './common/middleware/request-context.middleware'
 
 export async function createApp(): Promise<NestExpressApplication> {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
