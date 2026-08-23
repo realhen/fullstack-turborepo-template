@@ -4,6 +4,7 @@ import {
   type BillingJobProcessor,
 } from './billing-job.runner.js'
 import { PostgresBillingJobStore } from './postgres-job.store.js'
+import { workerConfigFromEnvironment } from './worker-config.js'
 
 class HttpBillingProcessor implements BillingJobProcessor {
   constructor(
@@ -27,15 +28,6 @@ class HttpBillingProcessor implements BillingJobProcessor {
   }
 }
 
-function positiveInteger(name: string, fallback: number): number {
-  const value = process.env[name]
-  if (value === undefined) return fallback
-  if (!/^\d+$/.test(value) || Number(value) < 1) {
-    throw new Error(`${name} must be a positive integer`)
-  }
-  return Number(value)
-}
-
 async function run(): Promise<void> {
   const processorUrl = process.env.BILLING_PROCESSOR_URL
   const workerToken = process.env.WORKER_SECRET
@@ -44,16 +36,16 @@ async function run(): Promise<void> {
       'BILLING_PROCESSOR_URL and WORKER_SECRET are required for the billing worker',
     )
   }
-  const pollMilliseconds = positiveInteger('BILLING_JOB_POLL_MS', 1_000)
+  const config = workerConfigFromEnvironment()
   const database = createDatabase(requireDatabaseConfig())
   const runner = new BillingJobRunner(
     new PostgresBillingJobStore(database.pool),
     new HttpBillingProcessor(processorUrl, workerToken),
     {
-      batchSize: positiveInteger('BILLING_JOB_BATCH_SIZE', 10),
-      leaseMilliseconds: positiveInteger('BILLING_JOB_LEASE_MS', 60_000),
-      maxAttempts: positiveInteger('BILLING_JOB_MAX_ATTEMPTS', 5),
-      retryDelayMilliseconds: positiveInteger('BILLING_JOB_RETRY_MS', 30_000),
+      batchSize: config.batchSize,
+      leaseMilliseconds: config.leaseMilliseconds,
+      maxAttempts: config.maxAttempts,
+      retryDelayMilliseconds: config.retryDelayMilliseconds,
     },
   )
   let stopping = false
@@ -77,7 +69,9 @@ async function run(): Promise<void> {
           }),
         )
       }
-      await new Promise((resolve) => setTimeout(resolve, pollMilliseconds))
+      await new Promise((resolve) =>
+        setTimeout(resolve, config.pollMilliseconds),
+      )
     }
   } finally {
     await database.pool.end()

@@ -30,6 +30,24 @@ function storeWith(jobs: ClaimedBillingJob[]): Omit<
 }
 
 describe('BillingJobRunner', () => {
+  it('rejects a lease that cannot safely fit a heartbeat', () => {
+    const store = storeWith([])
+
+    expect(
+      () =>
+        new BillingJobRunner(
+          store,
+          { process: vi.fn().mockResolvedValue(undefined) },
+          {
+            batchSize: 1,
+            leaseMilliseconds: 1_999,
+            maxAttempts: 3,
+            retryDelayMilliseconds: 1,
+          },
+        ),
+    ).toThrow('leaseMilliseconds must be at least 5000')
+  })
+
   it('completes a claimed job after the processor succeeds', async () => {
     const store = storeWith([job])
     await new BillingJobRunner(
@@ -37,7 +55,7 @@ describe('BillingJobRunner', () => {
       { process: vi.fn().mockResolvedValue(undefined) },
       {
         batchSize: 1,
-        leaseMilliseconds: 20,
+        leaseMilliseconds: 5_000,
         maxAttempts: 3,
         retryDelayMilliseconds: 1,
       },
@@ -52,7 +70,7 @@ describe('BillingJobRunner', () => {
       { process: vi.fn().mockRejectedValue(new Error('offline')) },
       {
         batchSize: 1,
-        leaseMilliseconds: 20,
+        leaseMilliseconds: 5_000,
         maxAttempts: 3,
         retryDelayMilliseconds: 1,
       },
@@ -71,7 +89,7 @@ describe('BillingJobRunner', () => {
         { process: vi.fn().mockRejectedValue(new Error('offline')) },
         {
           batchSize: 1,
-          leaseMilliseconds: 20,
+          leaseMilliseconds: 5_000,
           maxAttempts: 3,
           retryDelayMilliseconds: 1,
         },
@@ -108,12 +126,12 @@ describe('BillingJobRunner', () => {
         { process: vi.fn().mockReturnValue(processing) },
         {
           batchSize: 1,
-          leaseMilliseconds: 2_000,
+          leaseMilliseconds: 5_000,
           maxAttempts: 3,
           retryDelayMilliseconds: 1,
         },
       ).runOnce()
-      await vi.advanceTimersByTimeAsync(1_000)
+      await vi.advanceTimersByTimeAsync(2_500)
       finishProcessing?.()
       await Promise.resolve()
       expect(store.complete).not.toHaveBeenCalled()
@@ -136,7 +154,7 @@ describe('BillingJobRunner', () => {
         { process: vi.fn().mockResolvedValue(undefined) },
         {
           batchSize: 1,
-          leaseMilliseconds: 20,
+          leaseMilliseconds: 5_000,
           maxAttempts: 3,
           retryDelayMilliseconds: 1,
         },
@@ -170,12 +188,12 @@ describe('BillingJobRunner', () => {
         { process: vi.fn().mockReturnValue(processing) },
         {
           batchSize: 1,
-          leaseMilliseconds: 2_000,
+          leaseMilliseconds: 5_000,
           maxAttempts: 3,
           retryDelayMilliseconds: 1,
         },
       ).runOnce()
-      await vi.advanceTimersByTimeAsync(2_000)
+      await vi.advanceTimersByTimeAsync(5_000)
       expect(store.extendLease).toHaveBeenCalledOnce()
       finish?.()
       finishHeartbeat?.()
@@ -199,12 +217,12 @@ describe('BillingJobRunner', () => {
         { process: vi.fn().mockReturnValue(processing) },
         {
           batchSize: 1,
-          leaseMilliseconds: 2_000,
+          leaseMilliseconds: 5_000,
           maxAttempts: 3,
           retryDelayMilliseconds: 1,
         },
       ).runOnce()
-      await vi.advanceTimersByTimeAsync(1_000)
+      await vi.advanceTimersByTimeAsync(2_500)
       expect(store.extendLease).toHaveBeenCalledWith(
         expect.objectContaining({ id: job.id, leaseToken: job.leaseToken }),
       )

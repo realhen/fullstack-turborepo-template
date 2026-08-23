@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { Pool } from 'pg'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
+import { BillingJobRunner } from './billing-job.runner.js'
 import { PostgresBillingJobStore } from './postgres-job.store.js'
 
 const databaseUrl = process.env.DATABASE_RLS_TEST_URL
@@ -192,4 +193,47 @@ describeDatabase('PostgresBillingJobStore integration', () => {
     expect(row?.dead_at).toBeInstanceOf(Date)
     expect(row?.last_error).toContain('malformed')
   })
+
+  it('does not reclaim work that a live worker heartbeats beyond its original lease', async () => {
+    const id = await insertJob()
+    let releaseProcessing: (() => void) | undefined
+    const processing = new Promise<void>((resolve) => {
+      releaseProcessing = resolve
+    })
+    let signalStarted: (() => void) | undefined
+    const started = new Promise<void>((resolve) => {
+      signalStarted = resolve
+    })
+    const runner = new BillingJobRunner(
+      stores[0]!,
+      {
+        process: async () => {
+          signalStarted?.()
+          await processing
+        },
+      },
+      {
+        batchSize: 1,
+        leaseMilliseconds: 5_000,
+        maxAttempts: 3,
+        retryDelayMilliseconds: 1,
+      },
+    )
+
+    const firstWorker = runner.runOnce()
+    await started
+    await new Promise((resolve) => setTimeout(resolve, 5_200))
+    const secondWorkerClaims = await stores[1]!.claimBatch({
+      leaseForMilliseconds: 5_000,
+      limit: 10,
+      maxAttempts: 3,
+      now: new Date(),
+    })
+
+    expect(secondWorkerClaims).not.toContainEqual(
+      expect.objectContaining({ id }),
+    )
+    releaseProcessing?.()
+    await firstWorker
+  }, 10_000)
 })

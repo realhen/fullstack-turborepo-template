@@ -3,6 +3,7 @@ import type {
   BillingOutboxMessage,
   ClaimedBillingJob,
 } from '@repo/billing'
+import { MINIMUM_BILLING_JOB_LEASE_MILLISECONDS } from './worker-config.js'
 
 export interface BillingJobProcessor {
   process(message: BillingOutboxMessage): Promise<void>
@@ -18,7 +19,28 @@ export class BillingJobRunner {
       maxAttempts: number
       retryDelayMilliseconds: number
     },
-  ) {}
+  ) {
+    for (const [name, value] of Object.entries({
+      batchSize: options.batchSize,
+      maxAttempts: options.maxAttempts,
+      retryDelayMilliseconds: options.retryDelayMilliseconds,
+    })) {
+      if (!Number.isSafeInteger(value) || value < 1) {
+        throw new Error(`${name} must be a positive integer`)
+      }
+    }
+    if (
+      !Number.isSafeInteger(options.leaseMilliseconds) ||
+      options.leaseMilliseconds < MINIMUM_BILLING_JOB_LEASE_MILLISECONDS
+    ) {
+      throw new Error(
+        `leaseMilliseconds must be at least ${MINIMUM_BILLING_JOB_LEASE_MILLISECONDS}`,
+      )
+    }
+    if (this.heartbeatIntervalMilliseconds() >= options.leaseMilliseconds) {
+      throw new Error('leaseMilliseconds must leave time for a heartbeat')
+    }
+  }
 
   async runOnce(
     now = new Date(),
@@ -88,7 +110,7 @@ export class BillingJobRunner {
     }
     const heartbeat = setInterval(
       extendLease,
-      Math.max(1_000, Math.floor(this.options.leaseMilliseconds / 2)),
+      this.heartbeatIntervalMilliseconds(),
     )
     try {
       await this.processor.process(job.message)
@@ -108,6 +130,10 @@ export class BillingJobRunner {
       clearInterval(heartbeat)
       await heartbeatInFlight
     }
+  }
+
+  private heartbeatIntervalMilliseconds(): number {
+    return Math.floor(this.options.leaseMilliseconds / 2)
   }
 
   private async extendLease(job: ClaimedBillingJob): Promise<void> {

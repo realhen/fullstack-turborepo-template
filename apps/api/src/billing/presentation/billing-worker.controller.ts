@@ -10,11 +10,13 @@ import {
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { ApiExcludeEndpoint } from '@nestjs/swagger'
+import { SkipThrottle } from '@nestjs/throttler'
 import { BillingProjectionProcessor } from '../application/billing-projection.processor'
 import type { BillingOutboxMessage } from '../domain/billing.types'
 
 /** Internal worker callback; never expose this shared secret to a browser. */
 @Controller({ path: 'internal/billing', version: '1' })
+@SkipThrottle()
 export class BillingWorkerController {
   constructor(
     private readonly processor: BillingProjectionProcessor,

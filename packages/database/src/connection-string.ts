@@ -5,6 +5,7 @@ export type DatabaseEnvironment = NodeJS.ProcessEnv & {
   DATABASE_POOL_CONNECTION_TIMEOUT_MS?: string
   DATABASE_POOL_IDLE_TIMEOUT_MS?: string
   DATABASE_POOL_MAX?: string
+  DATABASE_MIGRATION_URL?: string
   DATABASE_URL?: string
   PGDATABASE?: string
   PGHOST?: string
@@ -134,4 +135,16 @@ export function requireDatabaseConfig(
     )
   }
   return config
+}
+
+/** Uses a migration identity when supplied without bypassing runtime TLS or pool settings. */
+export function migrationDatabaseConfigFromEnvironment(
+  environment: DatabaseEnvironment = process.env,
+): PoolConfig {
+  return requireDatabaseConfig({
+    ...environment,
+    ...(environment.DATABASE_MIGRATION_URL
+      ? { DATABASE_URL: environment.DATABASE_MIGRATION_URL }
+      : {}),
+  })
 }

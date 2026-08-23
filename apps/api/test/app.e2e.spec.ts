@@ -110,6 +110,23 @@ describe('API', () => {
       .expect(400)
   })
 
+  it('does not throttle authenticated internal billing jobs', async () => {
+    const server = app.getHttpServer()
+    const responses = []
+    for (let index = 0; index < 101; index += 1) {
+      responses.push(
+        await request(server)
+          .post('/api/v1/internal/billing/jobs')
+          .set('X-Forwarded-For', '203.0.113.99')
+          .set('X-Worker-Secret', process.env.WORKER_SECRET!)
+          .send({ eventId: `evt-backlog-${index}`, kind: 'billing.webhook' }),
+      )
+    }
+
+    expect(responses.every((response) => response.status === 204)).toBe(true)
+    expect(responses.some((response) => response.status === 429)).toBe(false)
+  }, 15_000)
+
   it('authorizes project operations through membership roles', async () => {
     const server = app.getHttpServer()
     const authorization = `Bearer ${process.env.AUTH_LOCAL_TOKEN}`

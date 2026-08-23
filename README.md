@@ -147,6 +147,8 @@ The handler verifies the raw request with Stripe's SDK and commits the webhook
 inbox record and PostgreSQL billing job in one transaction before returning
 success. Workers claim jobs with expiring lease tokens, call the authenticated
 internal processor, and complete or retry/dead-letter the lease atomically.
+`BILLING_JOB_LEASE_MS` must be at least 5 seconds; the worker heartbeats at
+half the configured lease, leaving a full half-lease for the renewal to commit.
 Checkout redirects are never treated as payment authority; subscription,
 invoice, and entitlement state comes from verified webhooks and reconciliation.
 

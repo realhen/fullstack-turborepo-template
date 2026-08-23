@@ -2,14 +2,10 @@ import { createHash } from 'node:crypto'
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { Pool } from 'pg'
-import { requireDatabaseConfig } from './connection-string'
+import { migrationDatabaseConfigFromEnvironment } from './connection-string'
 
 async function migrate(): Promise<void> {
-  const pool = new Pool(
-    process.env.DATABASE_MIGRATION_URL
-      ? { connectionString: process.env.DATABASE_MIGRATION_URL }
-      : requireDatabaseConfig(),
-  )
+  const pool = new Pool(migrationDatabaseConfigFromEnvironment())
   const client = await pool.connect()
   try {
     await client.query('SELECT pg_advisory_lock(892811020)')

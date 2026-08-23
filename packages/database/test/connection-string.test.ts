@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import path from 'node:path'
 import {
   databaseConfigFromEnvironment,
+  migrationDatabaseConfigFromEnvironment,
   requireDatabaseConfig,
 } from '../src/connection-string'
 
@@ -117,5 +118,39 @@ describe('databaseConfigFromEnvironment', () => {
         rejectUnauthorized: true,
       },
     })
+  })
+
+  it('gives the migration URL precedence while retaining pool and TLS settings', () => {
+    expect(
+      migrationDatabaseConfigFromEnvironment({
+        DATABASE_MIGRATION_URL: 'postgresql://migrator:secret@migration-db/app',
+        DATABASE_POOL_MAX: '1',
+        DATABASE_URL: 'postgresql://app:secret@runtime-db/app',
+        PGSSLMODE: 'verify-full',
+        PGSSLROOTCERT: rdsCertificateFixture,
+      }),
+    ).toMatchObject({
+      connectionString: 'postgresql://migrator:secret@migration-db/app',
+      max: 1,
+      ssl: { ca: 'test-rds-ca\n', rejectUnauthorized: true },
+    })
+  })
+
+  it('fails closed for an unreadable trusted root with a migration URL', () => {
+    expect(() =>
+      migrationDatabaseConfigFromEnvironment({
+        DATABASE_MIGRATION_URL: 'postgresql://migrator:secret@migration-db/app',
+        PGSSLMODE: 'verify-full',
+        PGSSLROOTCERT: '/does-not-exist',
+      }),
+    ).toThrow('PGSSLROOTCERT must point to a readable certificate bundle')
+  })
+
+  it('falls back to the normal runtime database configuration for migrations', () => {
+    expect(
+      migrationDatabaseConfigFromEnvironment({
+        DATABASE_URL: 'postgresql://app:secret@runtime-db/app',
+      }),
+    ).toEqual({ connectionString: 'postgresql://app:secret@runtime-db/app' })
   })
 })
