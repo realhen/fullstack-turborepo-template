@@ -10,7 +10,7 @@ export class InMemoryOrganizationManagementStore implements OrganizationManageme
     { id: string; name: string; slug: string }
   >()
 
-  async create(
+  create(
     input: CreateOrganizationInput,
   ): Promise<{ id: string; name: string; slug: string }> {
     if (
@@ -18,7 +18,7 @@ export class InMemoryOrganizationManagementStore implements OrganizationManageme
         (organization) => organization.slug === input.slug,
       )
     ) {
-      throw new Error('Organization slug already exists')
+      return Promise.reject(new Error('Organization slug already exists'))
     }
     const organization = {
       id: randomUUID(),
@@ -26,6 +26,6 @@ export class InMemoryOrganizationManagementStore implements OrganizationManageme
       slug: input.slug,
     }
     this.organizations.set(organization.id, organization)
-    return organization
+    return Promise.resolve(organization)
   }
 }

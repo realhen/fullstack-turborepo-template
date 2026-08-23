@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common'
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger'
 import {
   CurrentPrincipal,
   RequireOrganizationPermissions,
@@ -12,6 +12,7 @@ import { AuditReadService } from './audit-read.service'
 
 @ApiTags('audit')
 @ApiBearerAuth()
+@ApiParam({ format: 'uuid', name: 'organizationId', type: String })
 @UseGuards(OrganizationPermissionGuard)
 @Controller({
   path: 'organizations/:organizationId/audit-events',

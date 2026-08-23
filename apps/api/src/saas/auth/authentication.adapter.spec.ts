@@ -27,24 +27,24 @@ describe('authentication adapters', () => {
   })
 
   it('normalizes provider-neutral OIDC scope claim formats', () => {
-    expect(
-      principalFromJwt(
-        {
-          permissions: ['projects.write'],
-          scope: 'projects.read profile.read',
-          scp: ['projects.members.manage'],
-          sub: 'subject-1',
-        },
-        'https://issuer.example',
-      ),
-    ).toMatchObject({
-      id: 'subject-1',
-      scopes: expect.arrayContaining([
+    const principal = principalFromJwt(
+      {
+        permissions: ['projects.write'],
+        scope: 'projects.read profile.read',
+        scp: ['projects.members.manage'],
+        sub: 'subject-1',
+      },
+      'https://issuer.example',
+    )
+
+    expect(principal.id).toBe('subject-1')
+    expect(principal.scopes).toEqual(
+      expect.arrayContaining([
         'profile.read',
         'projects.members.manage',
         'projects.read',
         'projects.write',
       ]),
-    })
+    )
   })
 })

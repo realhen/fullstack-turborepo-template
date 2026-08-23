@@ -55,9 +55,10 @@ export class OrganizationPermissionService implements OrganizationPermissionEval
       organizationId,
       userId,
     )
-    if (!membership?.role) return false
+    const role = membership?.role
+    if (!role) return false
     return permissions.every((permission) =>
-      rolePermissions[membership.role]?.includes(permission),
+      rolePermissions[role]?.includes(permission),
     )
   }
 }

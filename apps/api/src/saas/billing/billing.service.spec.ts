@@ -67,7 +67,7 @@ describe('BillingService', () => {
       returnUrl: 'http://localhost:3000/settings/billing',
     })
 
-    expect(checkout.url).toStartWith('https://local.billing.test/checkout/')
+    expect(checkout.url).toMatch(/^https:\/\/local\.billing\.test\/checkout\//)
     expect(portal.url).toContain('/portal/local_cus_organization_1')
     expect(store.subscriptions).toHaveLength(0)
     expect(

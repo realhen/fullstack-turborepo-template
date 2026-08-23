@@ -12,18 +12,23 @@ describe('ScopeGuard project authorization', () => {
         }),
       } as never,
       {
-        authenticate: async () => ({
-          id: 'user-1',
-          provider: 'local',
-          scopes: ['projects:members:manage'],
-        }),
+        authenticate: () =>
+          Promise.resolve({
+            id: '00000000-0000-4000-8000-000000000001',
+            provider: 'local',
+            scopes: ['projects:members:manage'],
+          }),
       } as never,
       {
-        getMembership: async () => ({
-          project: { id: 'project-1', name: 'Project' },
-          role: 'viewer',
-          userId: 'user-1',
-        }),
+        getMembership: () =>
+          Promise.resolve({
+            project: {
+              id: '00000000-0000-4000-8000-000000000002',
+              name: 'Project',
+            },
+            role: 'viewer',
+            userId: '00000000-0000-4000-8000-000000000001',
+          }),
         hasRoleScopes: () => false,
       } as never,
     )
@@ -35,7 +40,7 @@ describe('ScopeGuard project authorization', () => {
         switchToHttp: () => ({
           getRequest: () => ({
             headers: { authorization: 'Bearer local' },
-            params: { projectId: 'project-1' },
+            params: { projectId: '00000000-0000-4000-8000-000000000002' },
           }),
         }),
       } as never),

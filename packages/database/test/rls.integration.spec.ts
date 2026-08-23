@@ -7,7 +7,7 @@ const rlsTestUrl = process.env.DATABASE_RLS_TEST_URL ?? ''
 describe('tenant row-level security', () => {
   let pool: Pool
 
-  beforeAll(async () => {
+  beforeAll(() => {
     if (rlsTestUrl) pool = new Pool({ connectionString: rlsTestUrl })
   })
 

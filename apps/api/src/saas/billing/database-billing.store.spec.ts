@@ -26,7 +26,7 @@ describe('PostgresBillingStore', () => {
       }),
     ).resolves.toBe(true)
 
-    expect(query.mock.calls.map(([statement]) => statement)).toEqual(
+    expect(query.mock.calls.map(([statement]) => String(statement))).toEqual(
       expect.arrayContaining([
         'BEGIN',
         expect.stringContaining('INSERT INTO billing_webhook_inbox'),

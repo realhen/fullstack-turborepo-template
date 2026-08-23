@@ -7,7 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common'
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger'
 import {
   CurrentPrincipal,
   RequireOrganizationPermissions,
@@ -20,6 +20,7 @@ import { ApiKeyService } from './api-key.service'
 
 @ApiTags('api-keys')
 @ApiBearerAuth()
+@ApiParam({ format: 'uuid', name: 'organizationId', type: String })
 @UseGuards(OrganizationPermissionGuard)
 @Controller({ path: 'organizations/:organizationId', version: '1' })
 export class ApiKeyController {
@@ -54,6 +55,7 @@ export class ApiKeyController {
   }
 
   @Delete('api-keys/:apiKeyId')
+  @ApiParam({ format: 'uuid', name: 'apiKeyId', type: String })
   @RequireOrganizationPermissions(['api_keys:manage'])
   revoke(
     @Param('organizationId', OrganizationIdPipe) organizationId: string,

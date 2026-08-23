@@ -42,8 +42,9 @@ const claimed: ClaimedBillingOutboxMessage = {
 describe('BillingOutboxDispatcher', () => {
   it('marks an outbox row sent only after a successful publish', async () => {
     const store = new MemoryOutboxStore([claimed])
+    const publish = vi.fn().mockResolvedValue(undefined)
     const publisher: BillingOutboxPublisher = {
-      publish: vi.fn().mockResolvedValue(undefined),
+      publish,
     }
 
     await expect(
@@ -52,7 +53,7 @@ describe('BillingOutboxDispatcher', () => {
       failed: 0,
       sent: 1,
     })
-    expect(publisher.publish).toHaveBeenCalledWith(claimed.message)
+    expect(publish).toHaveBeenCalledWith(claimed.message)
     expect(store.sent).toEqual(new Set(['outbox_1']))
   })
 
@@ -74,14 +75,15 @@ describe('BillingOutboxDispatcher', () => {
 
   it('does not publish a row again after it has been marked sent', async () => {
     const store = new MemoryOutboxStore([claimed])
+    const publish = vi.fn().mockResolvedValue(undefined)
     const publisher: BillingOutboxPublisher = {
-      publish: vi.fn().mockResolvedValue(undefined),
+      publish,
     }
     const dispatcher = new BillingOutboxDispatcher(store, publisher)
 
     await dispatcher.dispatchOnce()
     await dispatcher.dispatchOnce()
 
-    expect(publisher.publish).toHaveBeenCalledTimes(1)
+    expect(publish).toHaveBeenCalledTimes(1)
   })
 })

@@ -6,20 +6,22 @@ import type {
 export class InMemoryOrganizationMembershipStore implements OrganizationMembershipStore {
   constructor(private readonly memberships: OrganizationMembership[] = []) {}
 
-  async getMembership(
+  getMembership(
     organizationId: string,
     userId: string,
   ): Promise<OrganizationMembership | null> {
-    return (
+    return Promise.resolve(
       this.memberships.find(
         (membership) =>
           membership.organization.id === organizationId &&
           membership.userId === userId,
-      ) ?? null
+      ) ?? null,
     )
   }
 
-  async listMemberships(userId: string): Promise<OrganizationMembership[]> {
-    return this.memberships.filter((membership) => membership.userId === userId)
+  listMemberships(userId: string): Promise<OrganizationMembership[]> {
+    return Promise.resolve(
+      this.memberships.filter((membership) => membership.userId === userId),
+    )
   }
 }

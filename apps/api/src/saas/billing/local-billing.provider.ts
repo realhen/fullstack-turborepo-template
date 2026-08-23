@@ -26,8 +26,9 @@ export class LocalBillingProvider implements BillingProvider {
       quantity: number
       metadata: Record<string, string>
     },
-    _idempotencyKey: string,
+    idempotencyKey: string,
   ): Promise<{ id: string; url: string }> {
+    void idempotencyKey
     const id = `local_cs_${randomUUID()}`
     const subscriptionId = `local_sub_${randomUUID()}`
     this.subscriptions.set(subscriptionId, {
@@ -66,7 +67,7 @@ export class LocalBillingProvider implements BillingProvider {
     verifyStripeWebhookSignature({
       rawBody: input.rawBody,
       secret: this.webhookSecret,
-      signature: input.signature,
+      ...(input.signature === undefined ? {} : { signature: input.signature }),
     })
     return parseEvent(input.rawBody, this.name)
   }

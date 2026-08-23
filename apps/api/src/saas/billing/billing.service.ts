@@ -107,7 +107,10 @@ export class BillingService {
     duplicate: boolean
     eventId: string
   }> {
-    const event = this.provider.verifyWebhook({ rawBody, signature })
+    const event = this.provider.verifyWebhook({
+      rawBody,
+      ...(signature === undefined ? {} : { signature }),
+    })
     const inserted = await this.repository.recordWebhookReceipt(event)
     return { duplicate: !inserted, eventId: event.id }
   }
@@ -131,7 +134,7 @@ export class BillingService {
       await this.repository.findAccountByOrganization(organizationId)
     if (current) return current
     const customer = await this.provider.createCustomer({
-      email,
+      ...(email === undefined ? {} : { email }),
       organizationId,
     })
     return this.repository.createAccount({

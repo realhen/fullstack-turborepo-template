@@ -40,7 +40,7 @@ import { StripeBillingProvider } from './stripe-billing.provider'
       useFactory: () => {
         const databaseUrl = databaseUrlFromEnvironment()
         return databaseUrl
-          ? new PostgresBillingStore(createDatabase(databaseUrl).pool as never)
+          ? new PostgresBillingStore(createDatabase(databaseUrl).pool)
           : new InMemoryBillingStore()
       },
     },

@@ -9,7 +9,10 @@ function setup() {
   }
   const config = { getOrThrow: vi.fn().mockReturnValue('shared-worker-secret') }
   return {
-    controller: new BillingWorkerController(processor, config as never),
+    controller: new BillingWorkerController(
+      processor as never,
+      config as never,
+    ),
     processor,
   }
 }

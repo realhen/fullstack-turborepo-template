@@ -97,7 +97,7 @@ async function run(): Promise<void> {
       processor,
     )
     const dispatcher = new BillingOutboxDispatcher(
-      new PostgresBillingOutboxStore(createDatabase(databaseUrl).pool as never),
+      new PostgresBillingOutboxStore(createDatabase(databaseUrl).pool),
       new SqsBillingOutboxPublisher(
         await createAwsSqsPublisherTransport(process.env.AWS_REGION),
         queueUrl,
@@ -118,9 +118,7 @@ async function run(): Promise<void> {
   const queue = new LocalHttpQueue(queueUrl)
   const dispatcher = databaseUrl
     ? new BillingOutboxDispatcher(
-        new PostgresBillingOutboxStore(
-          createDatabase(databaseUrl).pool as never,
-        ),
+        new PostgresBillingOutboxStore(createDatabase(databaseUrl).pool),
         new LocalHttpBillingOutboxPublisher(queueUrl),
       )
     : null

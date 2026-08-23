@@ -3,6 +3,7 @@ import {
   ApiBearerAuth,
   ApiCreatedResponse,
   ApiOkResponse,
+  ApiParam,
   ApiTags,
 } from '@nestjs/swagger'
 import { ProjectMembership as ProjectMembershipModel } from '../../openapi.models'
@@ -19,6 +20,7 @@ import type { ProjectMembership } from './project.types'
 
 @ApiTags('projects')
 @ApiBearerAuth()
+@ApiParam({ format: 'uuid', name: 'projectId', type: String })
 @Controller({ path: 'projects', version: '1' })
 export class ProjectsController {
   constructor(private readonly projects: ProjectService) {}

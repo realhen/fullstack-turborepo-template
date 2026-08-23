@@ -14,15 +14,16 @@ export class DisabledBillingProvider implements BillingProvider {
     throw new ServiceUnavailableException('Billing is not enabled')
   }
 
-  createCustomer(_input: {
+  createCustomer(input: {
     organizationId: string
     email?: string
   }): Promise<{ id: string }> {
+    void input
     return this.unavailable()
   }
 
   createCheckoutSession(
-    _input: {
+    input: {
       customerId: string
       plan: { providerPriceId: string }
       quantity: number
@@ -30,30 +31,36 @@ export class DisabledBillingProvider implements BillingProvider {
       cancelUrl: string
       metadata: Record<string, string>
     },
-    _idempotencyKey: string,
+    idempotencyKey: string,
   ): Promise<{ id: string; url: string }> {
+    void input
+    void idempotencyKey
     return this.unavailable()
   }
 
-  createPortalSession(_input: {
+  createPortalSession(input: {
     customerId: string
     returnUrl: string
   }): Promise<{ id: string; url: string }> {
+    void input
     return this.unavailable()
   }
 
-  verifyWebhook(_input: {
+  verifyWebhook(input: {
     rawBody: Buffer
     signature?: string
   }): VerifiedBillingEvent {
+    void input
     return this.unavailable()
   }
 
-  retrieveSubscription(_id: string): Promise<ProviderSubscription | null> {
+  retrieveSubscription(id: string): Promise<ProviderSubscription | null> {
+    void id
     return this.unavailable()
   }
 
-  listSubscriptions(_customerId: string): Promise<ProviderSubscription[]> {
+  listSubscriptions(customerId: string): Promise<ProviderSubscription[]> {
+    void customerId
     return this.unavailable()
   }
 }

@@ -11,11 +11,12 @@ type StoredInvitation = CreateInvitationInput & {
 export class InMemoryInvitationStore implements InvitationStore {
   private readonly invitations = new Map<string, StoredInvitation>()
 
-  async create(
+  create(
     organizationId: string,
     _actorId: string,
     input: CreateInvitationInput,
   ): Promise<{ id: string }> {
+    void _actorId
     const duplicate = [...this.invitations.values()].some(
       (invitation) =>
         invitation.organizationId === organizationId &&
@@ -28,18 +29,19 @@ export class InMemoryInvitationStore implements InvitationStore {
       const error = Object.assign(new Error('Duplicate invitation'), {
         code: '23505',
       })
-      throw error
+      return Promise.reject(error)
     }
     const id = randomUUID()
     this.invitations.set(id, { ...input, id, organizationId })
-    return { id }
+    return Promise.resolve({ id })
   }
 
-  async revoke(
+  revoke(
     organizationId: string,
     _actorId: string,
     invitationId: string,
   ): Promise<boolean> {
+    void _actorId
     const invitation = this.invitations.get(invitationId)
     if (
       !invitation ||
@@ -47,13 +49,13 @@ export class InMemoryInvitationStore implements InvitationStore {
       invitation.acceptedAt ||
       invitation.revokedAt
     ) {
-      return false
+      return Promise.resolve(false)
     }
     invitation.revokedAt = new Date()
-    return true
+    return Promise.resolve(true)
   }
 
-  async accept(
+  accept(
     tokenHash: string,
     user: { email: string; userId: string },
   ): Promise<boolean> {
@@ -67,9 +69,9 @@ export class InMemoryInvitationStore implements InvitationStore {
       invitation.revokedAt ||
       invitation.expiresAt <= new Date()
     ) {
-      return false
+      return Promise.resolve(false)
     }
     invitation.acceptedAt = new Date()
-    return true
+    return Promise.resolve(true)
   }
 }

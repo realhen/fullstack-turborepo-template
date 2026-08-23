@@ -5,11 +5,18 @@ import {
   NotFoundException,
 } from '@nestjs/common'
 import { randomBytes, scrypt as nodeScrypt, timingSafeEqual } from 'node:crypto'
-import { promisify } from 'node:util'
 import { API_KEY_STORE, type ApiKeyStore } from './api-key.types'
 
-const scrypt = promisify(nodeScrypt)
 const KEY_LENGTH = 64
+
+function scrypt(secret: string, salt: Buffer, keyLength: number) {
+  return new Promise<Buffer>((resolve, reject) => {
+    nodeScrypt(secret, salt, keyLength, (error, derivedKey) => {
+      if (error) reject(error)
+      else resolve(derivedKey)
+    })
+  })
+}
 
 @Injectable()
 export class ApiKeyService {

@@ -45,12 +45,17 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
     return Promise.resolve(input)
   }
 
-  async getSummaryForOrganization(organizationId: string) {
+  getSummaryForOrganization(organizationId: string) {
     const account = this.accountsByOrganization.get(organizationId) ?? null
     if (!account) {
-      return { account, entitlements: [], invoices: [], subscriptions: [] }
+      return Promise.resolve({
+        account,
+        entitlements: [],
+        invoices: [],
+        subscriptions: [],
+      })
     }
-    return {
+    return Promise.resolve({
       account,
       entitlements: this.entitlements.get(account.id) ?? [],
       invoices: [...this.invoices.values()].filter(
@@ -59,7 +64,7 @@ export class InMemoryBillingStore implements BillingRepository, BillingOutbox {
       subscriptions: [...this.subscriptions.values()].filter(
         (subscription) => subscription.billingAccountId === account.id,
       ),
-    }
+    })
   }
 
   upsertSubscription(input: SubscriptionProjection): Promise<void> {

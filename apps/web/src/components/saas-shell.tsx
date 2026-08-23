@@ -45,7 +45,7 @@ export function SaasShell({
 
   function selectProject(event: ChangeEvent<HTMLSelectElement>) {
     navigate({
-      organizationId: organization?.id,
+      ...(organization ? { organizationId: organization.id } : {}),
       projectId: event.target.value,
     })
   }

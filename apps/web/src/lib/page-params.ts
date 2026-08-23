@@ -4,9 +4,12 @@ export type SearchParams = Promise<
 
 export async function selectionFromSearchParams(searchParams: SearchParams) {
   const params = await searchParams
+  const organizationId =
+    typeof params.organization === 'string' ? params.organization : undefined
+  const projectId =
+    typeof params.project === 'string' ? params.project : undefined
   return {
-    organizationId:
-      typeof params.organization === 'string' ? params.organization : undefined,
-    projectId: typeof params.project === 'string' ? params.project : undefined,
+    ...(organizationId ? { organizationId } : {}),
+    ...(projectId ? { projectId } : {}),
   }
 }

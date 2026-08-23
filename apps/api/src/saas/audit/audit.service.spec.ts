@@ -6,7 +6,10 @@ describe('AuditService', () => {
   it('redacts credentials before persistence', async () => {
     const events: AuditEventInput[] = []
     const store: AuditStore = {
-      append: async (event) => void events.push(event),
+      append: (event) => {
+        events.push(event)
+        return Promise.resolve()
+      },
     }
     const service = new AuditService(store)
 

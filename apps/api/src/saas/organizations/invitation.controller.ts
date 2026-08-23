@@ -7,7 +7,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common'
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger'
 import {
   CurrentPrincipal,
   RequireAuthenticated,
@@ -26,6 +26,7 @@ export class InvitationController {
   constructor(private readonly invitations: InvitationService) {}
 
   @Post('organizations/:organizationId/invitations')
+  @ApiParam({ format: 'uuid', name: 'organizationId', type: String })
   @UseGuards(OrganizationPermissionGuard)
   @RequireOrganizationPermissions(['members:invite'])
   create(
@@ -41,6 +42,8 @@ export class InvitationController {
   }
 
   @Delete('organizations/:organizationId/invitations/:invitationId')
+  @ApiParam({ format: 'uuid', name: 'organizationId', type: String })
+  @ApiParam({ format: 'uuid', name: 'invitationId', type: String })
   @UseGuards(OrganizationPermissionGuard)
   @RequireOrganizationPermissions(['members:manage'])
   revoke(
@@ -63,7 +66,7 @@ export class InvitationController {
     @CurrentPrincipal() principal: Principal,
   ) {
     return this.invitations.accept(input.token, {
-      email: principal.email,
+      ...(principal.email === undefined ? {} : { email: principal.email }),
       userId: principal.userId ?? principal.id,
     })
   }

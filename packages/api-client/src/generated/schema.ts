@@ -375,7 +375,9 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        organizationId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -392,7 +394,9 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        organizationId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -409,7 +413,10 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        apiKeyId: string
+        organizationId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -426,7 +433,9 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        organizationId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -443,7 +452,9 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        organizationId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -460,7 +471,10 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        invitationId: string
+        organizationId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -547,7 +561,9 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        organizationId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -564,7 +580,9 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        organizationId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -581,7 +599,9 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        projectId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -600,7 +620,9 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        projectId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -619,7 +641,9 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        projectId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -638,7 +662,9 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        organizationId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -655,7 +681,9 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        organizationId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -672,7 +700,9 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        organizationId: string
+      }
       cookie?: never
     }
     requestBody?: never
@@ -689,7 +719,9 @@ export interface operations {
     parameters: {
       query?: never
       header?: never
-      path?: never
+      path: {
+        organizationId: string
+      }
       cookie?: never
     }
     requestBody?: never

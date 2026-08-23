@@ -41,6 +41,7 @@
     "@types/compression": "catalog:",
     "@types/express": "catalog:",
     "@types/node": "catalog:",
+    "@types/pg": "catalog:",
     "@types/supertest": "catalog:",
     "eslint": "catalog:",
     "supertest": "catalog:",

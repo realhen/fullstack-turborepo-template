@@ -9,7 +9,7 @@ import type {
 
 // Upgrade deliberately and review Stripe's changelog rather than silently
 // inheriting the account default API version.
-const STRIPE_API_VERSION = '2026-02-25.clover'
+const STRIPE_API_VERSION = '2026-07-29.dahlia'
 
 /**
  * Stripe SDK adapter. Redirects create hosted sessions only; verified webhook

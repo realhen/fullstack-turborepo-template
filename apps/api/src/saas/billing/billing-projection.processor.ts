@@ -112,21 +112,18 @@ export class BillingProjectionProcessor {
     if (!customerId || !invoiceId) return
     const account = await this.repository.findAccountByCustomer(customerId)
     if (!account) return
+    const hostedInvoiceUrl = stringAt(object, 'hosted_invoice_url')
+    const invoicePdf = stringAt(object, 'invoice_pdf')
+    const providerSubscriptionId = stringAt(object, 'subscription')
     await this.repository.upsertInvoice({
       amountDue: numberAt(object, 'amount_due') ?? 0,
       amountPaid: numberAt(object, 'amount_paid') ?? 0,
       billingAccountId: account.id,
       currency: stringAt(object, 'currency') ?? 'usd',
-      ...(stringAt(object, 'hosted_invoice_url')
-        ? { hostedInvoiceUrl: stringAt(object, 'hosted_invoice_url') }
-        : {}),
-      ...(stringAt(object, 'invoice_pdf')
-        ? { invoicePdf: stringAt(object, 'invoice_pdf') }
-        : {}),
+      ...(hostedInvoiceUrl ? { hostedInvoiceUrl } : {}),
+      ...(invoicePdf ? { invoicePdf } : {}),
       providerInvoiceId: invoiceId,
-      ...(stringAt(object, 'subscription')
-        ? { providerSubscriptionId: stringAt(object, 'subscription') }
-        : {}),
+      ...(providerSubscriptionId ? { providerSubscriptionId } : {}),
       providerUpdatedAt: createdAt,
       status: stringAt(object, 'status') ?? 'unknown',
     })

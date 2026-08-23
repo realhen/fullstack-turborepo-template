@@ -1,11 +1,7 @@
 import 'server-only'
 
-import {
-  ApiClientError,
-  createServerApiClient,
-  unwrap,
-  type ApiGetResponse,
-} from '@repo/api-client'
+import { ApiClientError, unwrap, type ApiGetResponse } from '@repo/api-client'
+import { createServerApiClient } from '@repo/api-client/server'
 import { cookies } from 'next/headers'
 import type {
   AuditEvent,
@@ -16,13 +12,6 @@ import type {
   Workspace,
 } from './saas.types'
 
-type OrganizationListResponse = ApiGetResponse<'/api/v1/organizations'>
-type ProjectListResponse =
-  ApiGetResponse<'/api/v1/organizations/{organizationId}/projects'>
-type BillingPlansResponse =
-  ApiGetResponse<'/api/v1/organizations/{organizationId}/billing/plans'>
-type AuditEventsResponse =
-  ApiGetResponse<'/api/v1/organizations/{organizationId}/audit-events'>
 type ProjectMembersResponse =
   ApiGetResponse<'/api/v1/projects/{projectId}/members'>
 
@@ -54,9 +43,7 @@ function text(value: unknown): string | null {
   return typeof value === 'string' && value.length > 0 ? value : null
 }
 
-function organizationOptions(
-  response: OrganizationListResponse,
-): OrganizationOption[] {
+function organizationOptions(response: unknown): OrganizationOption[] {
   if (!Array.isArray(response)) return []
   return response.flatMap((item) => {
     const membership = record(item)
@@ -69,7 +56,7 @@ function organizationOptions(
   })
 }
 
-function projectOptions(response: ProjectListResponse): ProjectOption[] {
+function projectOptions(response: unknown): ProjectOption[] {
   if (!Array.isArray(response)) return []
   return response.flatMap((item) => {
     const project = record(item)
@@ -103,10 +90,11 @@ export async function getWorkspace(): Promise<Workspace> {
       }),
     )
     const principal = record(unwrap(principalResult))
+    const provider = text(principal?.provider)
     return {
       organizations,
       projectsByOrganization: Object.fromEntries(projects),
-      provider: text(principal?.provider) ?? undefined,
+      ...(provider ? { provider } : {}),
     }
   } catch (error) {
     return {
@@ -130,7 +118,7 @@ export async function getBillingPlans(organizationId: string): Promise<{
         params: { path: { organizationId } },
       },
     )
-    const response = record(unwrap(result) as BillingPlansResponse)
+    const response = record(unwrap(result))
     const plans = Array.isArray(response?.plans)
       ? response.plans.flatMap((item) => {
           const plan = record(item)
@@ -140,7 +128,7 @@ export async function getBillingPlans(organizationId: string): Promise<{
           return code &&
             displayName &&
             (interval === 'month' || interval === 'year')
-            ? [{ code, displayName, interval }]
+            ? [{ code, displayName, interval } satisfies BillingPlan]
             : []
         })
       : []
@@ -163,7 +151,7 @@ export async function getAuditEvents(organizationId: string): Promise<{
         params: { path: { organizationId } },
       },
     )
-    const response = record(unwrap(result) as AuditEventsResponse)
+    const response = record(unwrap(result))
     const events = Array.isArray(response?.items)
       ? response.items.flatMap((item) => {
           const event = record(item)

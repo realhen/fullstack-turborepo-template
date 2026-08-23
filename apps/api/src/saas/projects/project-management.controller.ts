@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common'
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger'
 import {
   CurrentPrincipal,
   RequireOrganizationPermissions,
@@ -12,6 +12,7 @@ import { ProjectManagementService } from './project-management.service'
 
 @ApiTags('projects')
 @ApiBearerAuth()
+@ApiParam({ format: 'uuid', name: 'organizationId', type: String })
 @UseGuards(OrganizationPermissionGuard)
 @Controller({ path: 'organizations/:organizationId/projects', version: '1' })
 export class ProjectManagementController {

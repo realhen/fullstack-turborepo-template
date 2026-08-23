@@ -35,9 +35,11 @@ export class DatabaseProjectMembershipStore implements ProjectMembershipStore {
     return membership ? this.toProjectMembership(membership) : null
   }
 
-  async listMemberships(projectId: string): Promise<ProjectMembership[]> {
-    throw new Error(
-      `Project ${projectId} memberships require a tenant-scoped operation`,
+  listMemberships(projectId: string): Promise<ProjectMembership[]> {
+    return Promise.reject(
+      new Error(
+        `Project ${projectId} memberships require a tenant-scoped operation`,
+      ),
     )
   }
 
@@ -58,11 +60,11 @@ export class DatabaseProjectMembershipStore implements ProjectMembershipStore {
     return memberships.map((membership) => this.toProjectMembership(membership))
   }
 
-  async upsertMembership(
-    membership: ProjectMembership,
-  ): Promise<ProjectMembership> {
-    throw new Error(
-      `Project ${membership.project.id} membership writes require a tenant-scoped operation`,
+  upsertMembership(membership: ProjectMembership): Promise<ProjectMembership> {
+    return Promise.reject(
+      new Error(
+        `Project ${membership.project.id} membership writes require a tenant-scoped operation`,
+      ),
     )
   }
 

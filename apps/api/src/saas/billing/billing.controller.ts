@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Param, Post } from '@nestjs/common'
-import { ApiBearerAuth, ApiTags } from '@nestjs/swagger'
+import { ApiBearerAuth, ApiParam, ApiTags } from '@nestjs/swagger'
 import { CurrentPrincipal, RequireAuthenticated } from '../auth/auth.decorators'
 import type { Principal } from '../auth/principal'
 import { OrganizationIdPipe } from '../organizations/organization-id.pipe'
@@ -8,6 +8,7 @@ import { BillingService } from './billing.service'
 
 @ApiTags('billing')
 @ApiBearerAuth()
+@ApiParam({ format: 'uuid', name: 'organizationId', type: String })
 @Controller({ path: 'organizations/:organizationId/billing', version: '1' })
 export class BillingController {
   constructor(private readonly billing: BillingService) {}
@@ -26,6 +27,7 @@ export class BillingController {
   listPlans(
     @Param('organizationId', OrganizationIdPipe) _organizationId: string,
   ) {
+    void _organizationId
     return { plans: this.billing.listPlans() }
   }
 
@@ -41,7 +43,7 @@ export class BillingController {
       organizationId,
       planCode: input.planCode,
       principal,
-      quantity: input.quantity,
+      ...(input.quantity === undefined ? {} : { quantity: input.quantity }),
       successUrl: input.successUrl,
     })
   }

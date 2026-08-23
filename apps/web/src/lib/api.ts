@@ -1,4 +1,5 @@
-import { createServerApiClient, unwrap, type ApiHealth } from '@repo/api-client'
+import { unwrap, type ApiHealth } from '@repo/api-client'
+import { createServerApiClient } from '@repo/api-client/server'
 
 export type { ApiHealth }
 

@@ -46,7 +46,17 @@
     "/api/v1/organizations/{organizationId}/service-accounts": {
       "post": {
         "operationId": "ApiKey_createServiceAccount",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": ""
@@ -63,7 +73,17 @@
     "/api/v1/organizations/{organizationId}/api-keys": {
       "post": {
         "operationId": "ApiKey_create",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": ""
@@ -80,7 +100,26 @@
     "/api/v1/organizations/{organizationId}/api-keys/{apiKeyId}": {
       "delete": {
         "operationId": "ApiKey_revoke",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "apiKeyId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -97,7 +136,17 @@
     "/api/v1/organizations/{organizationId}/audit-events": {
       "get": {
         "operationId": "AuditRead_list",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -114,7 +163,17 @@
     "/api/v1/organizations/{organizationId}/invitations": {
       "post": {
         "operationId": "Invitation_create",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": ""
@@ -131,7 +190,26 @@
     "/api/v1/organizations/{organizationId}/invitations/{invitationId}": {
       "delete": {
         "operationId": "Invitation_revoke",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "invitationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          },
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -221,7 +299,17 @@
     "/api/v1/organizations/{organizationId}/projects": {
       "get": {
         "operationId": "ProjectManagement_list",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -236,7 +324,17 @@
       },
       "post": {
         "operationId": "ProjectManagement_create",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": ""
@@ -253,7 +351,17 @@
     "/api/v1/projects/{projectId}": {
       "get": {
         "operationId": "Projects_getProject",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -277,7 +385,17 @@
     "/api/v1/projects/{projectId}/members": {
       "get": {
         "operationId": "Projects_listMembers",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "",
@@ -302,7 +420,17 @@
       },
       "post": {
         "operationId": "Projects_addMember",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "projectId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": "",
@@ -326,7 +454,17 @@
     "/api/v1/organizations/{organizationId}/billing": {
       "get": {
         "operationId": "Billing_getSummary",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -343,7 +481,17 @@
     "/api/v1/organizations/{organizationId}/billing/plans": {
       "get": {
         "operationId": "Billing_listPlans",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": ""
@@ -360,7 +508,17 @@
     "/api/v1/organizations/{organizationId}/billing/checkout": {
       "post": {
         "operationId": "Billing_createCheckout",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": ""
@@ -377,7 +535,17 @@
     "/api/v1/organizations/{organizationId}/billing/portal": {
       "post": {
         "operationId": "Billing_createPortal",
-        "parameters": [],
+        "parameters": [
+          {
+            "name": "organizationId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "format": "uuid",
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "201": {
             "description": ""

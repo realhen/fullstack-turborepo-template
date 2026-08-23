@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { processBillingQueueMessage } from './index'
+import { processBillingQueueMessage } from './index.js'
 
 describe('processBillingQueueMessage', () => {
   it('dispatches webhook and reconciliation work to the matching processor method', async () => {

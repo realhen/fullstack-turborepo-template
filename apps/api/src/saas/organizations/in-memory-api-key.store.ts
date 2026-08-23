@@ -13,11 +13,12 @@ export class InMemoryApiKeyStore implements ApiKeyStore {
   private readonly accounts = new Map<string, Account>()
   private readonly keys = new Map<string, ApiKeyRecord>()
 
-  async createServiceAccount(
+  createServiceAccount(
     organizationId: string,
     _actorId: string,
     input: { name: string; projectId?: string },
   ): Promise<{ id: string; name: string }> {
+    void _actorId
     const account = {
       ...input,
       id: randomUUID(),
@@ -25,10 +26,10 @@ export class InMemoryApiKeyStore implements ApiKeyStore {
       status: 'active',
     }
     this.accounts.set(account.id, account)
-    return { id: account.id, name: account.name }
+    return Promise.resolve({ id: account.id, name: account.name })
   }
 
-  async createApiKey(
+  createApiKey(
     organizationId: string,
     _actorId: string,
     input: {
@@ -39,8 +40,11 @@ export class InMemoryApiKeyStore implements ApiKeyStore {
       serviceAccountId: string
     },
   ): Promise<{ id: string; prefix: string }> {
+    void _actorId
     if (this.keys.has(input.prefix)) {
-      throw Object.assign(new Error('Duplicate API key'), { code: '23505' })
+      return Promise.reject(
+        Object.assign(new Error('Duplicate API key'), { code: '23505' }),
+      )
     }
     const account = this.accounts.get(input.serviceAccountId)
     if (
@@ -48,7 +52,7 @@ export class InMemoryApiKeyStore implements ApiKeyStore {
       account.organizationId !== organizationId ||
       account.status !== 'active'
     ) {
-      throw new Error('Active service account was not found')
+      return Promise.reject(new Error('Active service account was not found'))
     }
     const id = randomUUID()
     this.keys.set(input.prefix, {
@@ -62,30 +66,29 @@ export class InMemoryApiKeyStore implements ApiKeyStore {
       serviceAccountId: account.id,
       serviceAccountStatus: account.status,
     })
-    return { id, prefix: input.prefix }
+    return Promise.resolve({ id, prefix: input.prefix })
   }
 
-  async resolve(prefix: string): Promise<ApiKeyRecord | null> {
-    return this.keys.get(prefix) ?? null
+  resolve(prefix: string): Promise<ApiKeyRecord | null> {
+    return Promise.resolve(this.keys.get(prefix) ?? null)
   }
 
-  async markUsed(
-    _organizationId: string,
-    _apiKeyId: string,
-    _serviceAccountId: string,
-  ): Promise<void> {}
+  markUsed(): Promise<void> {
+    return Promise.resolve()
+  }
 
-  async revoke(
+  revoke(
     organizationId: string,
     _actorId: string,
     apiKeyId: string,
   ): Promise<boolean> {
+    void _actorId
     const key = [...this.keys.values()].find(
       (candidate) => candidate.apiKeyId === apiKeyId,
     )
     if (!key || key.organizationId !== organizationId || key.revokedAt)
-      return false
+      return Promise.resolve(false)
     key.revokedAt = new Date()
-    return true
+    return Promise.resolve(true)
   }
 }

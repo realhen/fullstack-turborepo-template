@@ -9,7 +9,7 @@ export class InMemoryAuditReadStore implements AuditReadStore, AuditStore {
     })[] = [],
   ) {}
 
-  async append(event: AuditEventInput): Promise<void> {
+  append(event: AuditEventInput): Promise<void> {
     this.events.push({
       action: event.action,
       actorId: event.actorId,
@@ -22,14 +22,16 @@ export class InMemoryAuditReadStore implements AuditReadStore, AuditStore {
       resourceId: event.resourceId ?? null,
       resourceType: event.resourceType,
     })
+    return Promise.resolve()
   }
 
-  async list(
+  list(
     organizationId: string,
-    _actorId: string,
+    actorId: string,
     input: { cursor?: { id: string; occurredAt: Date }; limit: number },
   ): Promise<AuditReadEvent[]> {
-    return this.events
+    void actorId
+    const events = this.events
       .filter((event) => event.organizationId === organizationId)
       .sort((left, right) => {
         const occurredAt =
@@ -45,6 +47,17 @@ export class InMemoryAuditReadStore implements AuditReadStore, AuditStore {
         )
       })
       .slice(0, input.limit)
-      .map(({ organizationId: _organizationId, ...event }) => event)
+      .map((event) => ({
+        action: event.action,
+        actorId: event.actorId,
+        actorType: event.actorType,
+        id: event.id,
+        metadata: event.metadata,
+        occurredAt: event.occurredAt,
+        projectId: event.projectId,
+        resourceId: event.resourceId,
+        resourceType: event.resourceType,
+      }))
+    return Promise.resolve(events)
   }
 }

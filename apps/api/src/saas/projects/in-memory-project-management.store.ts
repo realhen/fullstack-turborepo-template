@@ -10,11 +10,12 @@ export class InMemoryProjectManagementStore implements ProjectManagementStore {
     ProjectSummary & { organizationId: string }
   >()
 
-  async create(
+  create(
     organizationId: string,
     _actorId: string,
     input: Omit<ProjectSummary, 'id'>,
   ): Promise<ProjectSummary> {
+    void _actorId
     if (
       [...this.projects.values()].some(
         (project) =>
@@ -22,16 +23,24 @@ export class InMemoryProjectManagementStore implements ProjectManagementStore {
           project.slug === input.slug,
       )
     ) {
-      throw new Error('Project slug already exists in organization')
+      return Promise.reject(
+        new Error('Project slug already exists in organization'),
+      )
     }
     const project = { ...input, id: randomUUID(), organizationId }
     this.projects.set(project.id, project)
-    return project
+    return Promise.resolve(project)
   }
 
-  async list(organizationId: string): Promise<ProjectSummary[]> {
-    return [...this.projects.values()]
-      .filter((project) => project.organizationId === organizationId)
-      .map(({ organizationId: _organizationId, ...project }) => project)
+  list(organizationId: string): Promise<ProjectSummary[]> {
+    return Promise.resolve(
+      [...this.projects.values()]
+        .filter((project) => project.organizationId === organizationId)
+        .map((project) => ({
+          id: project.id,
+          name: project.name,
+          slug: project.slug,
+        })),
+    )
   }
 }

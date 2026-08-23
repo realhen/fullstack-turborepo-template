@@ -12,13 +12,14 @@ describe('OrganizationPermissionGuard', () => {
         }),
       } as never,
       {
-        authenticate: async () => ({
-          id: 'user-a',
-          provider: 'oidc',
-          scopes: ['billing:manage'],
-        }),
+        authenticate: () =>
+          Promise.resolve({
+            id: '00000000-0000-4000-8000-000000000001',
+            provider: 'oidc',
+            scopes: ['billing:manage'],
+          }),
       } as never,
-      { hasAll: async () => false },
+      { hasAll: () => Promise.resolve(false) },
     )
 
     await expect(
@@ -28,7 +29,9 @@ describe('OrganizationPermissionGuard', () => {
         switchToHttp: () => ({
           getRequest: () => ({
             headers: { authorization: 'Bearer token' },
-            params: { organizationId: 'org-a' },
+            params: {
+              organizationId: '00000000-0000-4000-8000-000000000002',
+            },
           }),
         }),
       } as never),

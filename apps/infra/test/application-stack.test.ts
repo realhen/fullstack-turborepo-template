@@ -93,7 +93,7 @@ describe('ApplicationStack', () => {
     })
     template.resourceCountIs('AWS::SQS::Queue', 2)
     template.resourceCountIs('AWS::CloudWatch::Dashboard', 1)
-    template.resourceCountIs('AWS::CloudWatch::Alarm', 4)
+    template.resourceCountIs('AWS::CloudWatch::Alarm', 6)
 
     template.hasResourceProperties(
       'AWS::ElasticLoadBalancingV2::Listener',

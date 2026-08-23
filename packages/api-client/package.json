@@ -4,13 +4,25 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts",
-    "./browser": "./src/browser.ts",
-    "./server": "./src/server.ts",
-    "./generated/schema": "./src/generated/schema.ts"
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./dist/index.js"
+    },
+    "./browser": {
+      "types": "./src/browser.ts",
+      "default": "./dist/browser.js"
+    },
+    "./server": {
+      "types": "./src/server.ts",
+      "default": "./dist/server.js"
+    },
+    "./generated/schema": {
+      "types": "./src/generated/schema.ts",
+      "default": "./dist/generated/schema.js"
+    }
   },
   "scripts": {
-    "build": "tsc --outDir dist",
+    "build": "tsc -p tsconfig.build.json",
     "generate": "openapi-typescript openapi.json -o src/generated/schema.ts",
     "lint": "eslint src --max-warnings=0",
     "test": "vitest run --passWithNoTests",
