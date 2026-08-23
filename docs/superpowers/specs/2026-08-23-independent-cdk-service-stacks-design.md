@@ -1,6 +1,6 @@
 # Independent CDK Service Stacks Design
 
-**Status:** Approved architecture, pending written-spec review
+**Status:** Approved for implementation
 
 **Date:** 2026-08-23
 
