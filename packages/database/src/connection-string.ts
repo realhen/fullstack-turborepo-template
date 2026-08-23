@@ -46,7 +46,9 @@ export function databaseConfigFromEnvironment(
   )
   const max = optionalPositiveInteger(environment, 'DATABASE_POOL_MAX')
   const poolSettings: PoolConfig = {
-    ...(connectionTimeoutMillis !== undefined ? { connectionTimeoutMillis } : {}),
+    ...(connectionTimeoutMillis !== undefined
+      ? { connectionTimeoutMillis }
+      : {}),
     ...(idleTimeoutMillis !== undefined ? { idleTimeoutMillis } : {}),
     ...(max !== undefined ? { max } : {}),
   }
@@ -69,7 +71,9 @@ export function databaseConfigFromEnvironment(
     database: environment.PGDATABASE,
     host: environment.PGHOST,
     password: environment.PGPASSWORD,
-    ...(environment.PGPORT ? { port: optionalPositiveInteger(environment, 'PGPORT') } : {}),
+    ...(environment.PGPORT
+      ? { port: optionalPositiveInteger(environment, 'PGPORT') }
+      : {}),
     ...(environment.PGSSLMODE === 'require'
       ? { ssl: { rejectUnauthorized: true } }
       : {}),

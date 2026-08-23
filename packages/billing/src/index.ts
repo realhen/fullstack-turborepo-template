@@ -110,6 +110,36 @@ export type BillingOutboxMessage =
   | { kind: 'billing.webhook'; eventId: string }
   | { kind: 'billing.reconcile'; customerId: string }
 
+export type ClaimedBillingJob = {
+  attempts: number
+  id: string
+  leaseToken: string
+  message: BillingOutboxMessage
+}
+
+export interface BillingJobStore {
+  claimBatch(input: {
+    leaseForMilliseconds: number
+    limit: number
+    maxAttempts: number
+    now: Date
+  }): Promise<ClaimedBillingJob[]>
+  complete(input: ClaimedBillingJob): Promise<boolean>
+  extendLease(input: {
+    id: string
+    leaseForMilliseconds: number
+    leaseToken: string
+    now: Date
+  }): Promise<boolean>
+  retryOrDead(input: {
+    error: string
+    id: string
+    leaseToken: string
+    maxAttempts: number
+    nextAvailableAt: Date
+  }): Promise<{ dead: boolean }>
+}
+
 export type ClaimedBillingOutboxMessage = {
   id: string
   leaseToken: string
