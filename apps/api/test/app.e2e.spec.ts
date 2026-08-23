@@ -1,4 +1,3 @@
-import type { Server } from 'node:http'
 import type { NestExpressApplication } from '@nestjs/platform-express'
 import request from 'supertest'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
@@ -26,14 +25,14 @@ describe('API', () => {
   })
 
   it('reports healthy', async () => {
-    const server = app.getHttpServer() as Server
+    const server = app.getHttpServer()
     const response = await request(server).get('/api/v1/health').expect(200)
 
     expect(response.body).toEqual({ service: 'api', status: 'ok' })
   })
 
   it('uses the ALB client address and serves Swagger with a compatible CSP', async () => {
-    const server = app.getHttpServer() as Server
+    const server = app.getHttpServer()
     const express = app.getHttpAdapter().getInstance()
     const response = await request(server).get('/api/docs/').expect(200)
 
@@ -48,7 +47,7 @@ describe('API', () => {
   })
 
   it('rate limits API requests but not load balancer health checks', async () => {
-    const server = app.getHttpServer() as Server
+    const server = app.getHttpServer()
     const apiResponses = []
     const healthResponses = []
     for (let index = 0; index < 101; index += 1) {
@@ -65,7 +64,7 @@ describe('API', () => {
   })
 
   it('requires authentication for the current-user endpoint', async () => {
-    const server = app.getHttpServer() as Server
+    const server = app.getHttpServer()
     await request(server)
       .get('/api/v1/me')
       .set('X-Forwarded-For', '203.0.113.42')
@@ -85,7 +84,7 @@ describe('API', () => {
   })
 
   it('authorizes project operations through membership roles', async () => {
-    const server = app.getHttpServer() as Server
+    const server = app.getHttpServer()
     const authorization = `Bearer ${process.env.AUTH_LOCAL_TOKEN}`
 
     await request(server)

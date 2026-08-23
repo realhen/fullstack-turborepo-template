@@ -18,7 +18,7 @@ export interface AuthenticationAdapter {
 
 /** Secure default: protected routes never authenticate without configuration. */
 export class DisabledAuthenticationAdapter implements AuthenticationAdapter {
-  authenticate(_token: string): Promise<Principal> {
+  authenticate(): Promise<Principal> {
     return Promise.reject(new AuthenticationError('Authentication is disabled'))
   }
 }

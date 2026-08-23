@@ -1,3 +1,5 @@
+import type { ProjectMembership } from '../projects/project.types'
+
 /** A provider-neutral identity that application authorization consumes. */
 export type Principal = {
   id: string
@@ -10,5 +12,5 @@ export type RequestWithPrincipal = {
   headers: { authorization?: string }
   params: Record<string, string | undefined>
   principal?: Principal
-  project?: import('../projects/project.types').ProjectMembership
+  project?: ProjectMembership
 }
