@@ -49,7 +49,7 @@ pnpm dev:containers
 # equivalent: docker compose up --build
 ```
 
-Docker Compose builds the same Dockerfiles used by CDK, starts both services, and wires the web container to the API container. This is useful in cloud development environments and for testing the production container layout without deploying AWS infrastructure.
+Docker Compose builds the same Dockerfiles used by CDK, starts both services, and wires the web container to the API container. CI builds and starts this stack, then checks its health endpoints and web-to-API connection. This is useful in cloud development environments and for testing the production container layout without deploying AWS infrastructure.
 
 Open either local workflow at:
 
@@ -82,16 +82,19 @@ The API validates configuration at startup. Add application-specific fields to `
 
 ## Deployment
 
-The included AWS CDK stack builds both Dockerfiles, deploys them to private ECS Fargate tasks, exposes the web app through a public application load balancer, and routes `/api/*` to NestJS. Internal web-to-API traffic uses Cloud Map service discovery.
+The included AWS CDK stack builds both Dockerfiles, deploys them to private ECS Fargate tasks, exposes the web app through a public HTTPS application load balancer, and routes `/api/*` to NestJS. Internal web-to-API traffic uses Cloud Map service discovery.
+
+CDK deployment requires an existing regional ACM certificate. This prevents an accidental HTTP-only deployment. Create or validate the certificate in the same AWS Region as the stack, then point your domain record to the load balancer.
 
 ```bash
 aws configure sso
+export CERTIFICATE_ARN=arn:aws:acm:us-east-1:123456789012:certificate/your-certificate-id
 pnpm --filter @repo/infra exec cdk bootstrap
-pnpm --filter @repo/infra diff
-pnpm --filter @repo/infra deploy
+pnpm --filter @repo/infra exec cdk diff -c certificateArn="$CERTIFICATE_ARN"
+pnpm --filter @repo/infra exec cdk deploy -c certificateArn="$CERTIFICATE_ARN"
 ```
 
-The stack creates billable AWS resources, including a NAT gateway, load balancer, and two Fargate services. Review `cdk diff` and AWS pricing before deployment. The starter serves HTTP from the generated load-balancer hostname; add Route 53 and an ACM certificate before exposing a production domain.
+The stack creates billable AWS resources, including a NAT gateway, load balancer, WAF web ACL, and two Fargate services. Review `cdk diff` and AWS pricing before deployment. A regional WAF rule limits a source IP to 500 requests per five-minute evaluation window, so the basic abuse limit stays effective even when the API service scales out. Add product-specific quotas or a shared rate-limit store when you need identity- or endpoint-aware limits.
 
 Destroy a test stack when it is no longer needed:
 
