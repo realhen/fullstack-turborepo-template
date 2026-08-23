@@ -2,22 +2,55 @@ import path from 'node:path'
 import * as cdk from 'aws-cdk-lib'
 import * as acm from 'aws-cdk-lib/aws-certificatemanager'
 import * as ec2 from 'aws-cdk-lib/aws-ec2'
+import * as ecrAssets from 'aws-cdk-lib/aws-ecr-assets'
 import * as ecs from 'aws-cdk-lib/aws-ecs'
 import * as ecsPatterns from 'aws-cdk-lib/aws-ecs-patterns'
 import * as elbv2 from 'aws-cdk-lib/aws-elasticloadbalancingv2'
 import * as logs from 'aws-cdk-lib/aws-logs'
+import * as route53 from 'aws-cdk-lib/aws-route53'
+import * as route53Targets from 'aws-cdk-lib/aws-route53-targets'
 import * as wafv2 from 'aws-cdk-lib/aws-wafv2'
 import type { Construct } from 'constructs'
 
-interface ApplicationStackProps extends cdk.StackProps {
+export const MAX_PROJECT_NAME_LENGTH = 63
+
+export interface ApplicationStackProps extends cdk.StackProps {
   certificateArn: string
+  domainName: string
+  hostedZoneId?: string
+  hostedZoneName?: string
   projectName: string
+}
+
+/**
+ * The project name is used as a Cloud Map DNS label and as part of the stack
+ * name, service names, and CloudWatch metric names.
+ */
+export function validateProjectName(projectName: string): void {
+  if (
+    !new RegExp(
+      `^[a-z](?:[a-z0-9-]{0,${MAX_PROJECT_NAME_LENGTH - 2}}[a-z0-9])?$`,
+    ).test(projectName)
+  ) {
+    throw new Error(
+      `projectName must be ${MAX_PROJECT_NAME_LENGTH} characters or fewer, start with a lowercase letter, end with a lowercase letter or digit, and contain only lowercase letters, digits, and hyphens.`,
+    )
+  }
 }
 
 export class ApplicationStack extends cdk.Stack {
   constructor(scope: Construct, id: string, props: ApplicationStackProps) {
     super(scope, id, props)
 
+    validateProjectName(props.projectName)
+
+    if (Boolean(props.hostedZoneId) !== Boolean(props.hostedZoneName)) {
+      throw new Error(
+        'hostedZoneId and hostedZoneName must be provided together to create a Route 53 alias record.',
+      )
+    }
+
+    const domainName = props.domainName.replace(/\.$/, '')
     const certificate = acm.Certificate.fromCertificateArn(
       this,
       'Certificate',
@@ -62,6 +95,7 @@ export class ApplicationStack extends cdk.Stack {
         ],
         file: 'apps/api/Dockerfile',
         ignoreMode: cdk.IgnoreMode.GLOB,
+        platform: ecrAssets.Platform.LINUX_AMD64,
       }),
       healthCheck: {
         command: [
@@ -85,7 +119,7 @@ export class ApplicationStack extends cdk.Stack {
       circuitBreaker: { rollback: true },
       cloudMapOptions: { name: 'api' },
       cluster,
-      desiredCount: 1,
+      desiredCount: 2,
       enableExecuteCommand: true,
       healthCheckGracePeriod: cdk.Duration.seconds(60),
       maxHealthyPercent: 200,
@@ -102,7 +136,7 @@ export class ApplicationStack extends cdk.Stack {
         circuitBreaker: { rollback: true },
         certificate,
         cluster,
-        desiredCount: 1,
+        desiredCount: 2,
         enableExecuteCommand: true,
         healthCheckGracePeriod: cdk.Duration.seconds(60),
         maxHealthyPercent: 200,
@@ -133,6 +167,7 @@ export class ApplicationStack extends cdk.Stack {
             ],
             file: 'apps/web/Dockerfile',
             ignoreMode: cdk.IgnoreMode.GLOB,
+            platform: ecrAssets.Platform.LINUX_AMD64,
           }),
           logDriver: ecs.LogDrivers.awsLogs({
             logRetention: logs.RetentionDays.ONE_MONTH,
@@ -168,6 +203,22 @@ export class ApplicationStack extends cdk.Stack {
             sampledRequestsEnabled: true,
           },
         },
+        {
+          name: 'AWSManagedRulesCommonRuleSet',
+          overrideAction: { none: {} },
+          priority: 1,
+          statement: {
+            managedRuleGroupStatement: {
+              name: 'AWSManagedRulesCommonRuleSet',
+              vendorName: 'AWS',
+            },
+          },
+          visibilityConfig: {
+            cloudWatchMetricsEnabled: true,
+            metricName: `${props.projectName}-aws-managed-common`,
+            sampledRequestsEnabled: true,
+          },
+        },
       ],
     })
 
@@ -196,15 +247,43 @@ export class ApplicationStack extends cdk.Stack {
     })
 
     apiService
-      .autoScaleTaskCount({ maxCapacity: 4, minCapacity: 1 })
+      .autoScaleTaskCount({ maxCapacity: 4, minCapacity: 2 })
       .scaleOnCpuUtilization('ApiCpuScaling', { targetUtilizationPercent: 70 })
 
     webService.service
-      .autoScaleTaskCount({ maxCapacity: 4, minCapacity: 1 })
+      .autoScaleTaskCount({ maxCapacity: 4, minCapacity: 2 })
       .scaleOnCpuUtilization('WebCpuScaling', { targetUtilizationPercent: 70 })
 
+    if (props.hostedZoneId && props.hostedZoneName) {
+      const hostedZone = route53.HostedZone.fromHostedZoneAttributes(
+        this,
+        'HostedZone',
+        {
+          hostedZoneId: props.hostedZoneId,
+          zoneName: props.hostedZoneName,
+        },
+      )
+
+      new route53.ARecord(this, 'ApplicationAliasRecord', {
+        // A trailing dot makes this a fully qualified record name. Without it,
+        // CDK would append the hosted-zone name a second time for subdomains.
+        recordName: `${domainName}.`,
+        target: route53.RecordTarget.fromAlias(
+          new route53Targets.LoadBalancerTarget(webService.loadBalancer),
+        ),
+        zone: hostedZone,
+      })
+    }
+
     new cdk.CfnOutput(this, 'ApplicationUrl', {
-      value: `https://${webService.loadBalancer.loadBalancerDnsName}`,
+      description: 'The HTTPS URL served by the custom domain.',
+      value: `https://${domainName}`,
+    })
+
+    new cdk.CfnOutput(this, 'LoadBalancerDnsName', {
+      description:
+        'The load balancer DNS name. Use it only when creating DNS records; its certificate does not cover this name.',
+      value: webService.loadBalancer.loadBalancerDnsName,
     })
   }
 }

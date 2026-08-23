@@ -4,10 +4,11 @@
   "private": true,
   "scripts": {
     "build": "next build",
-    "clean": "rm -rf .next .turbo",
+    "clean": "node -e \"for (const path of ['.next', '.turbo']) require('node:fs').rmSync(path, { recursive: true, force: true })\"",
     "dev": "next dev",
     "lint": "eslint src --max-warnings=0",
     "start": "next start",
+    "test": "vitest run --passWithNoTests",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -26,6 +27,7 @@
     "@types/react-dom": "catalog:",
     "eslint": "catalog:",
     "tailwindcss": "catalog:",
-    "typescript": "catalog:"
+    "typescript": "catalog:",
+    "vitest": "catalog:"
   }
 }

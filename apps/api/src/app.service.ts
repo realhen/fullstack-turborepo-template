@@ -6,3 +6,4 @@ export class AppService {
     return { message: 'Your NestJS API is ready.' }
   }
 }
+

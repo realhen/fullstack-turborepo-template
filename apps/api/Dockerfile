@@ -6,8 +6,16 @@ RUN corepack enable && corepack prepare pnpm@11.22.0 --activate
 
 FROM base AS pruner
 WORKDIR /repo
+COPY .npmrc package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+COPY apps/api/package.json apps/api/package.json
+COPY apps/infra/package.json apps/infra/package.json
+COPY apps/web/package.json apps/web/package.json
+COPY packages/eslint-config/package.json packages/eslint-config/package.json
+COPY packages/typescript-config/package.json packages/typescript-config/package.json
+COPY packages/ui/package.json packages/ui/package.json
+RUN pnpm install --frozen-lockfile --ignore-scripts
 COPY . .
-RUN pnpm dlx turbo@2.10.11 prune @repo/api --docker
+RUN pnpm exec turbo prune @repo/api --docker
 
 FROM base AS builder
 WORKDIR /repo

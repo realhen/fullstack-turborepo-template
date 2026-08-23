@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "build": "nest build",
-    "clean": "rm -rf .turbo coverage dist",
+    "clean": "node -e \"for (const path of ['.turbo', 'coverage', 'dist']) require('node:fs').rmSync(path, { recursive: true, force: true })\"",
     "dev": "nest start --watch",
     "lint": "eslint src test --max-warnings=0",
     "start": "node dist/main.js",
@@ -23,6 +23,7 @@
     "class-validator": "catalog:",
     "compression": "catalog:",
     "helmet": "catalog:",
+    "jose": "catalog:",
     "reflect-metadata": "catalog:",
     "rxjs": "catalog:",
     "zod": "catalog:"

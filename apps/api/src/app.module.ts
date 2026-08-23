@@ -6,6 +6,8 @@ import { AppController } from './app.controller'
 import { AppService } from './app.service'
 import { validateEnvironment } from './env'
 import { HealthController } from './health/health.controller'
+import { SaasModule } from './saas/saas.module'
+import { ScopeGuard } from './saas/auth/scope.guard'
 
 @Module({
   imports: [
@@ -20,6 +22,7 @@ import { HealthController } from './health/health.controller'
         ttl: 60_000,
       },
     ]),
+    SaasModule,
   ],
   controllers: [AppController, HealthController],
   providers: [
@@ -27,6 +30,10 @@ import { HealthController } from './health/health.controller'
     {
       provide: APP_GUARD,
       useClass: ThrottlerGuard,
+    },
+    {
+      provide: APP_GUARD,
+      useClass: ScopeGuard,
     },
   ],
 })

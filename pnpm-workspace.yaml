@@ -29,6 +29,7 @@ catalog:
   'eslint-config-next': ^16.3.2
   'globals': ^17.11.0
   'helmet': ^8.3.0
+  'jose': ^6.2.3
   'next': ^16.3.2
   'prettier': ^3.9.6
   'react': ^19.2.8

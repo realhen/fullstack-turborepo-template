@@ -9,3 +9,4 @@ work
 *.log
 .env*
 !apps/**/.env.example
+

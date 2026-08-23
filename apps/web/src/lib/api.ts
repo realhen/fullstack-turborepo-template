@@ -23,3 +23,4 @@ export async function getApiHealth(): Promise<ApiHealth | null> {
     return null
   }
 }
+

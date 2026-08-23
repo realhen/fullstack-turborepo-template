@@ -84,14 +84,19 @@ The API validates configuration at startup. Add application-specific fields to `
 
 The included AWS CDK stack builds both Dockerfiles, deploys them to private ECS Fargate tasks, exposes the web app through a public HTTPS application load balancer, and routes `/api/*` to NestJS. Internal web-to-API traffic uses Cloud Map service discovery.
 
-CDK deployment requires an existing regional ACM certificate. This prevents an accidental HTTP-only deployment. Create or validate the certificate in the same AWS Region as the stack, then point your domain record to the load balancer.
+CDK deployment requires an existing regional ACM certificate and its matching custom domain. This prevents an accidental HTTP-only deployment. Create or validate the certificate in the same AWS Region as the stack. The stack outputs the custom-domain HTTPS URL, never an HTTPS URL for the load balancer DNS name.
+
+When the domain is hosted in Route 53, provide both the hosted-zone ID and name to create an A-record alias automatically. Omit both values when another DNS provider manages the record, then configure that provider to point the custom domain at the `LoadBalancerDnsName` stack output.
 
 ```bash
 aws configure sso
 export CERTIFICATE_ARN=arn:aws:acm:us-east-1:123456789012:certificate/your-certificate-id
+export DOMAIN_NAME=app.example.com
+export HOSTED_ZONE_ID=Z0123456789ABCDEF
+export HOSTED_ZONE_NAME=example.com
 pnpm --filter @repo/infra exec cdk bootstrap
-pnpm --filter @repo/infra exec cdk diff -c certificateArn="$CERTIFICATE_ARN"
-pnpm --filter @repo/infra exec cdk deploy -c certificateArn="$CERTIFICATE_ARN"
+pnpm --filter @repo/infra exec cdk diff -c certificateArn="$CERTIFICATE_ARN" -c domainName="$DOMAIN_NAME" -c hostedZoneId="$HOSTED_ZONE_ID" -c hostedZoneName="$HOSTED_ZONE_NAME"
+pnpm --filter @repo/infra exec cdk deploy -c certificateArn="$CERTIFICATE_ARN" -c domainName="$DOMAIN_NAME" -c hostedZoneId="$HOSTED_ZONE_ID" -c hostedZoneName="$HOSTED_ZONE_NAME"
 ```
 
 The stack creates billable AWS resources, including a NAT gateway, load balancer, WAF web ACL, and two Fargate services. Review `cdk diff` and AWS pricing before deployment. A regional WAF rule limits a source IP to 500 requests per five-minute evaluation window, so the basic abuse limit stays effective even when the API service scales out. Add product-specific quotas or a shared rate-limit store when you need identity- or endpoint-aware limits.
@@ -109,6 +114,54 @@ pnpm --filter @repo/infra destroy
 - API clients: generate from Swagger/OpenAPI when the interface becomes large enough to justify it.
 - Shared code: add a package only when two consumers genuinely share stable, domain-agnostic behavior.
 - Production operations: add HTTPS, domain records, secrets, persistence, alarms, and deployment workflows for the target environment.
+
+## SaaS authentication and project authorization
+
+The API keeps **authentication** (who issued a token) separate from
+**authorization** (what the principal can do in this application). The
+provider-neutral `apps/api/src/saas` module exposes a standard `Principal`:
+`id`, optional `email`, `provider`, and `scopes`.
+
+`AUTH_MODE=oidc` validates bearer JWTs against the configured issuer and JWKS
+URI, plus either an audience or provider client ID, using `jose`. This works
+with Supabase, WorkOS, or another
+standards-compliant provider without importing provider SDKs. The adapter reads
+`scope`, `scp`, and WorkOS-style `permissions` claims. Supabase tokens use
+`AUTH_AUDIENCE=authenticated`; WorkOS session tokens can instead use
+`AUTH_CLIENT_ID`, which validates their `client_id` claim. Always copy the exact
+issuer from a real token and use the provider's HTTPS JWKS endpoint.
+
+`AUTH_MODE=disabled` is the secure production default: public endpoints boot,
+but every protected route returns `401`. This lets a new deployment become
+healthy before an identity provider is selected without accidentally bypassing
+authorization.
+
+The default `AUTH_MODE=disabled` is fail-closed: public endpoints still work,
+but every endpoint protected by a scope decorator returns `401`. This lets a
+production container start safely before its identity provider configuration is
+present. Use `AUTH_MODE=oidc` in a real production deployment.
+
+For local development, `AUTH_MODE=local` uses a deliberately configured bearer
+token and a seeded owner membership. Set a unique `AUTH_LOCAL_TOKEN` of at
+least 32 characters; it is never defaulted. Local mode is rejected during
+production startup. See `apps/api/.env.example` for all variables.
+
+Authorization is opt-in and declarative:
+
+```ts
+@RequireScopes('profile:read')
+@RequireProjectScopes(['projects:members:manage'])
+```
+
+`@CurrentPrincipal()` and `@CurrentProject()` provide the already-authorized
+objects to thin controllers. Project roles are `owner`, `admin`, `member`, and
+`viewer`; their permissions are centralized in `ProjectService`. Project-role
+permissions are mandatory for `@RequireProjectScopes` and never fall back to a
+global token scope. The default
+in-memory `ProjectMembershipStore` is only a local/demo adapter. Replace the
+`PROJECT_MEMBERSHIP_STORE` port with a durable database implementation before
+using OIDC in production, and add tenant/project provisioning plus audit logs
+as part of that integration.
 
 ## Dependency policy
 
