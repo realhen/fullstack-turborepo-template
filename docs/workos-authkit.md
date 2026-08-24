@@ -257,6 +257,11 @@ cookie. Successful transitions write the sealed session cookie before
 redirecting. Logout is a POST-backed action that clears local cookies and then
 uses the WorkOS logout URL when a valid session is available.
 
+Concurrent requests may attempt to refresh the same sealed session. A
+successful rotation writes the replacement cookie; a stale terminal refresh
+redirects to sign-in without deleting that replacement. Structurally invalid
+cookies are still removed immediately.
+
 Sign-up always continues to the same Magic Auth code screen for both newly
 created and already-existing emails. This avoids revealing account existence;
 the password remains available for later password sign-in, while the initial

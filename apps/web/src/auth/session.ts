@@ -15,6 +15,7 @@ export type SessionAuthentication =
       replacementCookie?: string
     }
   | { authenticated: false; clearCookie: boolean; retryable?: true }
+export type SessionCookieUpdate = string | null | undefined
 export type SessionInput = {
   sealedSession?: string
   config: WebAuthConfig
@@ -37,6 +38,18 @@ function retryableSessionError(error: unknown) {
     code === 'ERR_JOSE_GENERIC' &&
     /JSON Web Key Set HTTP response/.test(error.message)
   )
+}
+function invalidSessionCookie(reason?: string) {
+  return (
+    reason === 'invalid_session_cookie' ||
+    reason === 'no_session_cookie_provided'
+  )
+}
+export function sessionCookieUpdate(
+  result: SessionAuthentication,
+): SessionCookieUpdate {
+  if (result.authenticated) return result.replacementCookie
+  return result.clearCookie ? null : undefined
 }
 export async function authenticateWebSession(
   input: SessionInput,
@@ -75,13 +88,19 @@ export async function authenticateWebSession(
         accessToken: refreshed.accessToken,
         replacementCookie: refreshed.sealedSession,
       }
-    return refreshed.retryable
-      ? { authenticated: false, clearCookie: false, retryable: true }
-      : { authenticated: false, clearCookie: true }
+    if (refreshed.retryable)
+      return { authenticated: false, clearCookie: false, retryable: true }
+    // A structurally invalid cookie is safe to remove. Other terminal refresh
+    // results can race with a successful rotation from a concurrent request,
+    // so they redirect without emitting a stale cookie deletion.
+    return {
+      authenticated: false,
+      clearCookie: invalidSessionCookie(refreshed.reason),
+    }
   } catch (error) {
     return retryableSessionError(error)
       ? { authenticated: false, clearCookie: false, retryable: true }
-      : { authenticated: false, clearCookie: true }
+      : { authenticated: false, clearCookie: false }
   }
 }
 export async function currentApiAuthorization(): Promise<string | undefined> {

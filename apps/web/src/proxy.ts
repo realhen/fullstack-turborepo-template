@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { getWebAuthConfig } from './auth/config'
-import { authenticateWebSession } from './auth/session'
+import { authenticateWebSession, sessionCookieUpdate } from './auth/session'
 import { authCookieOptions, deleteAuthCookieOptions } from './auth/cookies'
 export const config = { matcher: ['/app/:path*'] }
 export function requiresAuthentication(pathname: string) {
@@ -26,10 +26,11 @@ export async function proxy(request: NextRequest) {
   })
   if (result.authenticated) {
     const response = NextResponse.next()
-    if (result.replacementCookie)
+    const cookieUpdate = sessionCookieUpdate(result)
+    if (cookieUpdate)
       response.cookies.set(
         auth.sessionCookieName,
-        result.replacementCookie,
+        cookieUpdate,
         authCookieOptions('session', production),
       )
     return response
@@ -41,7 +42,7 @@ export async function proxy(request: NextRequest) {
     `${request.nextUrl.pathname}${request.nextUrl.search}`,
   )
   const response = NextResponse.redirect(destination)
-  if (result.clearCookie)
+  if (sessionCookieUpdate(result) === null)
     response.cookies.set(
       auth.sessionCookieName,
       '',

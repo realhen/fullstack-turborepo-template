@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-assignment, @typescript-eslint/require-await */
 import { describe, expect, it } from 'vitest'
-import { authenticateWebSession } from './session'
+import type { AuthenticationProvider, ProviderSession } from './provider'
+import { authenticateWebSession, sessionCookieUpdate } from './session'
 const config = {
   mode: 'workos' as const,
   apiKey: 'sk',
@@ -115,7 +116,7 @@ describe('authenticateWebSession', () => {
     ).resolves.toEqual({ authenticated: false, clearCookie: true })
   })
 
-  it('clears the sealed cookie for terminal refresh failures', async () => {
+  it('redirects without deleting a cookie after terminal refresh failures', async () => {
     await expect(
       authenticateWebSession({
         config,
@@ -131,6 +132,76 @@ describe('authenticateWebSession', () => {
           }),
         } as any,
       }),
+    ).resolves.toEqual({ authenticated: false, clearCookie: false })
+  })
+
+  it('clears a structurally invalid sealed cookie after refresh', async () => {
+    await expect(
+      authenticateWebSession({
+        config,
+        sealedSession: 'malformed',
+        provider: {
+          loadSession: async () => ({
+            authenticate: async () => ({ authenticated: false }),
+            refresh: async () => ({
+              authenticated: false,
+              retryable: false,
+              reason: 'invalid_session_cookie',
+            }),
+          }),
+        } as any,
+      }),
     ).resolves.toEqual({ authenticated: false, clearCookie: true })
+  })
+
+  it('does not let a stale terminal refresh response erase a rotated cookie', async () => {
+    let releaseStaleRefresh!: () => void
+    const staleRefresh = new Promise<void>((resolve) => {
+      releaseStaleRefresh = resolve
+    })
+    const providerSession = (
+      refresh: ProviderSession['refresh'],
+    ): AuthenticationProvider =>
+      ({
+        loadSession: async () =>
+          ({
+            authenticate: async () => ({ authenticated: false }),
+            refresh,
+          }) as ProviderSession,
+      }) as unknown as AuthenticationProvider
+
+    const staleRequest = authenticateWebSession({
+      config,
+      sealedSession: 'original',
+      provider: providerSession(async () => {
+        await staleRefresh
+        return {
+          authenticated: false,
+          retryable: false,
+          reason: 'invalid_grant',
+        }
+      }),
+    })
+    const successfulRequest = authenticateWebSession({
+      config,
+      sealedSession: 'original',
+      provider: providerSession(async () => ({
+        authenticated: true,
+        sealedSession: 'rotated',
+        accessToken: 'access',
+        user: { id: 'u', email: 'u@test' },
+      })),
+    })
+
+    let browserCookie: string | undefined = 'original'
+    const successful = await successfulRequest
+    browserCookie = sessionCookieUpdate(successful) ?? browserCookie
+    releaseStaleRefresh()
+    const stale = await staleRequest
+    const staleUpdate = sessionCookieUpdate(stale)
+    if (staleUpdate === null) browserCookie = undefined
+    else if (staleUpdate) browserCookie = staleUpdate
+
+    expect(browserCookie).toBe('rotated')
   })
 })
