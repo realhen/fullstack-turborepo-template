@@ -1,31 +1,279 @@
 import { createHash } from 'node:crypto'
 import { WorkOS } from '@workos-inc/node'
-import type { AuthenticationOutcome, AuthenticationProvider, AuthenticatedUser, ProviderSession } from './provider'
+import type {
+  AuthenticationOutcome,
+  AuthenticationProvider,
+  AuthenticatedUser,
+  ProviderSession,
+} from './provider'
 import type { WebAuthConfig } from './config'
-type User = { id: string; email: string; emailVerified: boolean; firstName: string | null; lastName: string | null }
+type User = {
+  id: string
+  email: string
+  emailVerified: boolean
+  firstName: string | null
+  lastName: string | null
+}
 type Auth = { accessToken: string; sealedSession?: string; user: User }
-type Client = { userManagement: { [key: string]: (...args: never[]) => unknown } }
-function user(value: User): AuthenticatedUser { return { email: value.email, emailVerified: value.emailVerified, ...(value.firstName ? { firstName: value.firstName } : {}), id: value.id, ...(value.lastName ? { lastName: value.lastName } : {}) } }
-function authenticated(response: Auth): AuthenticationOutcome { if (!response.sealedSession) throw new Error('WorkOS did not return a sealed session'); return { accessToken: response.accessToken, sealedSession: response.sealedSession, status: 'authenticated', user: user(response.user) } }
-function context(input: { ipAddress?: string; userAgent?: string; signalsId?: string }) { return { ...(input.ipAddress ? { ipAddress: input.ipAddress } : {}), ...(input.userAgent ? { userAgent: input.userAgent } : {}), ...(input.signalsId ? { signalsId: input.signalsId } : {}) } }
-export function pkceChallenge(verifier: string) { return createHash('sha256').update(verifier).digest('base64url') }
+type Client = {
+  userManagement: { [key: string]: (...args: never[]) => unknown }
+}
+function user(value: User): AuthenticatedUser {
+  return {
+    email: value.email,
+    emailVerified: value.emailVerified,
+    ...(value.firstName ? { firstName: value.firstName } : {}),
+    id: value.id,
+    ...(value.lastName ? { lastName: value.lastName } : {}),
+  }
+}
+function authenticated(response: Auth): AuthenticationOutcome {
+  if (!response.sealedSession)
+    throw new Error('WorkOS did not return a sealed session')
+  return {
+    accessToken: response.accessToken,
+    sealedSession: response.sealedSession,
+    status: 'authenticated',
+    user: user(response.user),
+  }
+}
+function context(input: {
+  ipAddress?: string
+  userAgent?: string
+  signalsId?: string
+}) {
+  return {
+    ...(input.ipAddress ? { ipAddress: input.ipAddress } : {}),
+    ...(input.userAgent ? { userAgent: input.userAgent } : {}),
+    ...(input.signalsId ? { signalsId: input.signalsId } : {}),
+  }
+}
+export function pkceChallenge(verifier: string) {
+  return createHash('sha256').update(verifier).digest('base64url')
+}
 export class WorkosAuthenticationProvider implements AuthenticationProvider {
- private readonly client: Client
- constructor(private readonly config: Extract<WebAuthConfig, { mode: 'workos' }>, client?: Client) { this.client = client ?? (new WorkOS(config.apiKey, { clientId: config.clientId }) as unknown as Client) }
- private call(name: string, input: Record<string, unknown>) { return this.client.userManagement[name]!(input as never) as Promise<Auth> }
- async signUp(input: Parameters<AuthenticationProvider['signUp']>[0]) { await this.client.userManagement.createUser!({ ...context(input), email: input.email, ...(input.firstName ? { firstName: input.firstName } : {}), ...(input.lastName ? { lastName: input.lastName } : {}), password: input.password } as never); return this.authenticateWithPassword(input) }
- async authenticateWithPassword(input: Parameters<AuthenticationProvider['authenticateWithPassword']>[0]) { return authenticated(await this.call('authenticateWithPassword', { ...context(input), email: input.email, password: input.password, session: { cookiePassword: this.config.cookiePassword, sealSession: true } })) }
- async sendMagicAuthCode(input: Parameters<AuthenticationProvider['sendMagicAuthCode']>[0]) { return this.client.userManagement.createMagicAuth!({ ...context(input), email: input.email } as never) as Promise<{ radarAuthAttemptId?: string }> }
- async authenticateWithMagicAuth(input: Parameters<AuthenticationProvider['authenticateWithMagicAuth']>[0]) { return authenticated(await this.call('authenticateWithMagicAuth', { ...context(input), code: input.code, email: input.email, ...(input.radarAuthAttemptId ? { radarAuthAttemptId: input.radarAuthAttemptId } : {}), session: { cookiePassword: this.config.cookiePassword, sealSession: true } })) }
- async verifyEmail(input: Parameters<AuthenticationProvider['verifyEmail']>[0]) { return authenticated(await this.call('authenticateWithEmailVerification', { ...context(input), code: input.code, pendingAuthenticationToken: input.pendingAuthenticationToken, session: { cookiePassword: this.config.cookiePassword, sealSession: true } })) }
- async startPasswordReset(input: Parameters<AuthenticationProvider['startPasswordReset']>[0]) { await this.client.userManagement.createPasswordReset!(input as never) }
- async resetPassword(input: Parameters<AuthenticationProvider['resetPassword']>[0]) { await this.client.userManagement.resetPassword!({ newPassword: input.password, token: input.token } as never) }
- async enrollTotp(_: Parameters<AuthenticationProvider['enrollTotp']>[0]): Promise<Awaited<ReturnType<AuthenticationProvider['enrollTotp']>>> { throw new Error('WorkOS TOTP enrollment requires an authenticated user ID') }
- async authenticateTotp(input: Parameters<AuthenticationProvider['authenticateTotp']>[0]) { if (!input.challengeId) throw new Error('WorkOS TOTP requires an authentication challenge ID'); return authenticated(await this.call('authenticateWithTotp', { ...context(input), authenticationChallengeId: input.challengeId, code: input.code, pendingAuthenticationToken: input.pendingAuthenticationToken, session: { cookiePassword: this.config.cookiePassword, sealSession: true } })) }
- async startRadarChallenge() { throw new Error('WorkOS Radar SMS start requires a user ID') }
- async completeRadarChallenge(input: Parameters<AuthenticationProvider['completeRadarChallenge']>[0]) { if (input.type !== 'email') throw new Error('WorkOS Radar SMS completion requires a verified phone number and verification ID'); return authenticated(await this.call('authenticateWithRadarEmailChallenge', { code: input.code, pendingAuthenticationToken: input.pendingAuthenticationToken, radarChallengeId: input.challengeId, session: { cookiePassword: this.config.cookiePassword, sealSession: true } })) }
- async authorizationUrl(input: Parameters<AuthenticationProvider['authorizationUrl']>[0]) { return this.client.userManagement.getAuthorizationUrl!({ ...(input.organizationId ? { organizationId: input.organizationId } : {}), ...(input.provider ? { provider: input.provider } : {}), clientId: this.config.clientId, codeChallenge: pkceChallenge(input.codeVerifier), codeChallengeMethod: 'S256', redirectUri: this.config.redirectUri, state: input.state } as never) as string }
- async exchangeAuthorizationCode(input: Parameters<AuthenticationProvider['exchangeAuthorizationCode']>[0]) { return authenticated(await this.call('authenticateWithCode', { ...context(input), clientId: this.config.clientId, code: input.code, codeVerifier: input.codeVerifier, session: { cookiePassword: this.config.cookiePassword, sealSession: true } })) }
- async resolveSsoOrganization() { return null }
- async loadSession(sealedSession: string): Promise<ProviderSession> { const session = this.client.userManagement.loadSealedSession!({ cookiePassword: this.config.cookiePassword, sessionData: sealedSession } as never) as { authenticate(): Promise<{ authenticated: boolean; accessToken?: string; user?: User }>; refresh(input: { cookiePassword: string }): Promise<{ authenticated: boolean; sealedSession?: string; session?: Auth }>; getLogoutUrl(input: { returnTo: string }): Promise<string> }; const password = this.config.cookiePassword; return { async authenticate() { const response = await session.authenticate(); return response.authenticated && response.accessToken && response.user ? { accessToken: response.accessToken, authenticated: true, user: user(response.user) } : { authenticated: false } }, async refresh() { const response = await session.refresh({ cookiePassword: password }); return response.authenticated && response.sealedSession && response.session ? { accessToken: response.session.accessToken, authenticated: true, sealedSession: response.sealedSession, user: user(response.session.user) } : { authenticated: false } }, logoutUrl: (returnTo) => session.getLogoutUrl({ returnTo }) } }
+  private readonly client: Client
+  constructor(
+    private readonly config: Extract<WebAuthConfig, { mode: 'workos' }>,
+    client?: Client,
+  ) {
+    this.client =
+      client ??
+      (new WorkOS(config.apiKey, {
+        clientId: config.clientId,
+      }) as unknown as Client)
+  }
+  private call(name: string, input: Record<string, unknown>) {
+    return this.client.userManagement[name]!(input as never) as Promise<Auth>
+  }
+  async signUp(input: Parameters<AuthenticationProvider['signUp']>[0]) {
+    await this.client.userManagement.createUser!({
+      ...context(input),
+      email: input.email,
+      ...(input.firstName ? { firstName: input.firstName } : {}),
+      ...(input.lastName ? { lastName: input.lastName } : {}),
+      password: input.password,
+    } as never)
+    return this.authenticateWithPassword(input)
+  }
+  async authenticateWithPassword(
+    input: Parameters<AuthenticationProvider['authenticateWithPassword']>[0],
+  ) {
+    return authenticated(
+      await this.call('authenticateWithPassword', {
+        ...context(input),
+        email: input.email,
+        password: input.password,
+        session: {
+          cookiePassword: this.config.cookiePassword,
+          sealSession: true,
+        },
+      }),
+    )
+  }
+  async sendMagicAuthCode(
+    input: Parameters<AuthenticationProvider['sendMagicAuthCode']>[0],
+  ) {
+    return this.client.userManagement.createMagicAuth!({
+      ...context(input),
+      email: input.email,
+    } as never) as Promise<{ radarAuthAttemptId?: string }>
+  }
+  async authenticateWithMagicAuth(
+    input: Parameters<AuthenticationProvider['authenticateWithMagicAuth']>[0],
+  ) {
+    return authenticated(
+      await this.call('authenticateWithMagicAuth', {
+        ...context(input),
+        code: input.code,
+        email: input.email,
+        ...(input.radarAuthAttemptId
+          ? { radarAuthAttemptId: input.radarAuthAttemptId }
+          : {}),
+        session: {
+          cookiePassword: this.config.cookiePassword,
+          sealSession: true,
+        },
+      }),
+    )
+  }
+  async verifyEmail(
+    input: Parameters<AuthenticationProvider['verifyEmail']>[0],
+  ) {
+    return authenticated(
+      await this.call('authenticateWithEmailVerification', {
+        ...context(input),
+        code: input.code,
+        pendingAuthenticationToken: input.pendingAuthenticationToken,
+        session: {
+          cookiePassword: this.config.cookiePassword,
+          sealSession: true,
+        },
+      }),
+    )
+  }
+  async startPasswordReset(
+    input: Parameters<AuthenticationProvider['startPasswordReset']>[0],
+  ) {
+    await this.client.userManagement.createPasswordReset!(input as never)
+  }
+  async resetPassword(
+    input: Parameters<AuthenticationProvider['resetPassword']>[0],
+  ) {
+    await this.client.userManagement.resetPassword!({
+      newPassword: input.password,
+      token: input.token,
+    } as never)
+  }
+  enrollTotp(
+    input: Parameters<AuthenticationProvider['enrollTotp']>[0],
+  ): Promise<Awaited<ReturnType<AuthenticationProvider['enrollTotp']>>> {
+    void input
+    return Promise.reject(
+      new Error('WorkOS TOTP enrollment requires an authenticated user ID'),
+    )
+  }
+  async authenticateTotp(
+    input: Parameters<AuthenticationProvider['authenticateTotp']>[0],
+  ) {
+    if (!input.challengeId)
+      throw new Error('WorkOS TOTP requires an authentication challenge ID')
+    return authenticated(
+      await this.call('authenticateWithTotp', {
+        ...context(input),
+        authenticationChallengeId: input.challengeId,
+        code: input.code,
+        pendingAuthenticationToken: input.pendingAuthenticationToken,
+        session: {
+          cookiePassword: this.config.cookiePassword,
+          sealSession: true,
+        },
+      }),
+    )
+  }
+  startRadarChallenge(): Promise<void> {
+    return Promise.reject(
+      new Error('WorkOS Radar SMS start requires a user ID'),
+    )
+  }
+  async completeRadarChallenge(
+    input: Parameters<AuthenticationProvider['completeRadarChallenge']>[0],
+  ) {
+    if (input.type !== 'email')
+      throw new Error(
+        'WorkOS Radar SMS completion requires a verified phone number and verification ID',
+      )
+    return authenticated(
+      await this.call('authenticateWithRadarEmailChallenge', {
+        code: input.code,
+        pendingAuthenticationToken: input.pendingAuthenticationToken,
+        radarChallengeId: input.challengeId,
+        session: {
+          cookiePassword: this.config.cookiePassword,
+          sealSession: true,
+        },
+      }),
+    )
+  }
+  authorizationUrl(
+    input: Parameters<AuthenticationProvider['authorizationUrl']>[0],
+  ) {
+    return Promise.resolve(
+      this.client.userManagement.getAuthorizationUrl!({
+        ...(input.organizationId
+          ? { organizationId: input.organizationId }
+          : {}),
+        ...(input.provider ? { provider: input.provider } : {}),
+        clientId: this.config.clientId,
+        codeChallenge: pkceChallenge(input.codeVerifier),
+        codeChallengeMethod: 'S256',
+        redirectUri: this.config.redirectUri,
+        state: input.state,
+      } as never) as string,
+    )
+  }
+  async exchangeAuthorizationCode(
+    input: Parameters<AuthenticationProvider['exchangeAuthorizationCode']>[0],
+  ) {
+    return authenticated(
+      await this.call('authenticateWithCode', {
+        ...context(input),
+        clientId: this.config.clientId,
+        code: input.code,
+        codeVerifier: input.codeVerifier,
+        session: {
+          cookiePassword: this.config.cookiePassword,
+          sealSession: true,
+        },
+      }),
+    )
+  }
+  resolveSsoOrganization() {
+    return Promise.resolve(null)
+  }
+  loadSession(sealedSession: string): Promise<ProviderSession> {
+    const session = this.client.userManagement.loadSealedSession!({
+      cookiePassword: this.config.cookiePassword,
+      sessionData: sealedSession,
+    } as never) as {
+      authenticate(): Promise<{
+        authenticated: boolean
+        accessToken?: string
+        user?: User
+      }>
+      refresh(input: { cookiePassword: string }): Promise<{
+        authenticated: boolean
+        sealedSession?: string
+        session?: Auth
+      }>
+      getLogoutUrl(input: { returnTo: string }): Promise<string>
+    }
+    const password = this.config.cookiePassword
+    return Promise.resolve({
+      async authenticate() {
+        const response = await session.authenticate()
+        return response.authenticated && response.accessToken && response.user
+          ? {
+              accessToken: response.accessToken,
+              authenticated: true,
+              user: user(response.user),
+            }
+          : { authenticated: false }
+      },
+      async refresh() {
+        const response = await session.refresh({ cookiePassword: password })
+        return response.authenticated &&
+          response.sealedSession &&
+          response.session
+          ? {
+              accessToken: response.session.accessToken,
+              authenticated: true,
+              sealedSession: response.sealedSession,
+              user: user(response.session.user),
+            }
+          : { authenticated: false }
+      },
+      logoutUrl: (returnTo) => session.getLogoutUrl({ returnTo }),
+    })
+  }
 }

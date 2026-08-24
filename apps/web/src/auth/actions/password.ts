@@ -5,11 +5,87 @@ import { z } from 'zod'
 import { authCookieOptions, flowCookieName } from '../cookies'
 import { getWebAuthConfig } from '../config'
 import { createFlowStateCodec } from '../flow-state'
-import { passwordAuthentication, verifyPasswordEmail } from '../password-service'
+import {
+  passwordAuthentication,
+  verifyPasswordEmail,
+} from '../password-service'
 import { getAuthenticationProvider, writeSessionCookie } from '../session'
 import { currentAuthRequestContext } from '../request-context'
 import { safeReturnPath } from '../return-path'
-const credentials = z.object({ email: z.string().email(), password: z.string().min(8), returnTo: z.string().optional(), signalsId: z.string().optional() })
-export async function signInAction(formData: FormData) { const value = credentials.parse(Object.fromEntries(formData)); const config = getWebAuthConfig(); if (config.mode === 'local') redirect(safeReturnPath(value.returnTo)); const result = await passwordAuthentication({ provider: getAuthenticationProvider(config)!, flow: createFlowStateCodec(config.cookiePassword), context: await currentAuthRequestContext(), ...value }); if (result.outcome.status === 'authenticated') { await writeSessionCookie(result.outcome.sealedSession); redirect(safeReturnPath(value.returnTo)) } if ('flow' in result) { (await cookies()).set(flowCookieName(config), result.flow, authCookieOptions('flow', process.env.NODE_ENV === 'production')); redirect('/verify-email') } return { code: result.outcome.status, message: 'Authentication cannot continue.' } }
-export async function signUpAction(formData: FormData) { const value = credentials.parse(Object.fromEntries(formData)); const config = getWebAuthConfig(); if (config.mode === 'local') redirect(safeReturnPath(value.returnTo)); const result = await passwordAuthentication({ provider: getAuthenticationProvider(config)!, flow: createFlowStateCodec(config.cookiePassword), context: await currentAuthRequestContext(), ...value, signUp: true }); if (result.outcome.status === 'authenticated') { await writeSessionCookie(result.outcome.sealedSession); redirect(safeReturnPath(value.returnTo)) } if ('flow' in result) { (await cookies()).set(flowCookieName(config), result.flow, authCookieOptions('flow', process.env.NODE_ENV === 'production')); redirect('/verify-email') } return { code: result.outcome.status, message: 'Authentication cannot continue.' } }
-export async function verifyEmailAction(formData: FormData) { const config = getWebAuthConfig(); if (config.mode === 'local') redirect('/app'); const flow = (await cookies()).get(flowCookieName(config))?.value; if (!flow) return { code: 'flow_expired', message: 'Please restart authentication.' }; const code = z.string().min(1).parse(formData.get('code')); const outcome = await verifyPasswordEmail({ provider: getAuthenticationProvider(config)!, flow: createFlowStateCodec(config.cookiePassword), flowValue: flow, code, context: await currentAuthRequestContext(), ...(typeof formData.get('signalsId') === 'string' ? { signalsId: formData.get('signalsId') as string } : {}) }); if (outcome.status === 'authenticated') { await writeSessionCookie(outcome.sealedSession); redirect('/app') } return { code: outcome.status, message: 'Authentication cannot continue.' } }
+const credentials = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+  returnTo: z.string().optional(),
+  signalsId: z.string().optional(),
+})
+export async function signInAction(formData: FormData) {
+  const value = credentials.parse(Object.fromEntries(formData))
+  const config = getWebAuthConfig()
+  if (config.mode === 'local') redirect(safeReturnPath(value.returnTo))
+  const result = await passwordAuthentication({
+    provider: getAuthenticationProvider(config)!,
+    flow: createFlowStateCodec(config.cookiePassword),
+    context: await currentAuthRequestContext(),
+    ...value,
+  })
+  if (result.outcome.status === 'authenticated') {
+    await writeSessionCookie(result.outcome.sealedSession)
+    redirect(safeReturnPath(value.returnTo))
+  }
+  if ('flow' in result) {
+    ;(await cookies()).set(
+      flowCookieName(config),
+      result.flow,
+      authCookieOptions('flow', process.env.NODE_ENV === 'production'),
+    )
+    redirect('/verify-email')
+  }
+  redirect(`/sign-in?error=${encodeURIComponent(result.outcome.status)}`)
+}
+export async function signUpAction(formData: FormData) {
+  const value = credentials.parse(Object.fromEntries(formData))
+  const config = getWebAuthConfig()
+  if (config.mode === 'local') redirect(safeReturnPath(value.returnTo))
+  const result = await passwordAuthentication({
+    provider: getAuthenticationProvider(config)!,
+    flow: createFlowStateCodec(config.cookiePassword),
+    context: await currentAuthRequestContext(),
+    ...value,
+    signUp: true,
+  })
+  if (result.outcome.status === 'authenticated') {
+    await writeSessionCookie(result.outcome.sealedSession)
+    redirect(safeReturnPath(value.returnTo))
+  }
+  if ('flow' in result) {
+    ;(await cookies()).set(
+      flowCookieName(config),
+      result.flow,
+      authCookieOptions('flow', process.env.NODE_ENV === 'production'),
+    )
+    redirect('/verify-email')
+  }
+  redirect(`/sign-up?error=${encodeURIComponent(result.outcome.status)}`)
+}
+export async function verifyEmailAction(formData: FormData) {
+  const config = getWebAuthConfig()
+  if (config.mode === 'local') redirect('/app')
+  const flow = (await cookies()).get(flowCookieName(config))?.value
+  if (!flow) redirect('/sign-in?error=flow_expired')
+  const code = z.string().min(1).parse(formData.get('code'))
+  const outcome = await verifyPasswordEmail({
+    provider: getAuthenticationProvider(config)!,
+    flow: createFlowStateCodec(config.cookiePassword),
+    flowValue: flow,
+    code,
+    context: await currentAuthRequestContext(),
+    ...(typeof formData.get('signalsId') === 'string'
+      ? { signalsId: formData.get('signalsId') as string }
+      : {}),
+  })
+  if (outcome.status === 'authenticated') {
+    await writeSessionCookie(outcome.sealedSession)
+    redirect('/app')
+  }
+  redirect(`/sign-in?error=${encodeURIComponent(outcome.status)}`)
+}
