@@ -73,4 +73,27 @@ describe('WorkOS adapter', () => {
       }),
     )
   })
+  it('completes Radar SMS only with server flow verification context', async () => {
+    const authenticateWithRadarSmsChallenge = vi
+      .fn()
+      .mockResolvedValue(response)
+    const provider = new WorkosAuthenticationProvider(config, {
+      userManagement: { authenticateWithRadarSmsChallenge },
+    } as unknown as WorkosClient)
+    await provider.completeRadarChallenge({
+      type: 'sms',
+      code: '123456',
+      pendingAuthenticationToken: 'pending',
+      challengeId: 'ignored',
+      verificationId: 'verification',
+      phoneNumber: '+14165551234',
+    })
+    expect(authenticateWithRadarSmsChallenge).toHaveBeenCalledWith(
+      expect.objectContaining({
+        verificationId: 'verification',
+        phoneNumber: '+14165551234',
+        pendingAuthenticationToken: 'pending',
+      }),
+    )
+  })
 })

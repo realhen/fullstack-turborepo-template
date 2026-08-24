@@ -223,10 +223,25 @@ export class WorkosAuthenticationProvider implements AuthenticationProvider {
   async completeRadarChallenge(
     input: Parameters<AuthenticationProvider['completeRadarChallenge']>[0],
   ) {
-    if (input.type !== 'email')
-      throw new Error(
-        'WorkOS Radar SMS completion requires a verified phone number and verification ID',
+    if (input.type === 'sms') {
+      if (!input.verificationId || !input.phoneNumber)
+        throw new Error(
+          'WorkOS Radar SMS completion requires server flow context',
+        )
+      const { phoneNumber, verificationId } = input
+      return this.transition(() =>
+        this.client.userManagement.authenticateWithRadarSmsChallenge({
+          code: input.code,
+          pendingAuthenticationToken: input.pendingAuthenticationToken,
+          phoneNumber,
+          verificationId,
+          session: {
+            cookiePassword: this.config.cookiePassword,
+            sealSession: true,
+          },
+        }),
       )
+    }
     return this.transition(() =>
       this.client.userManagement.authenticateWithRadarEmailChallenge({
         code: input.code,
