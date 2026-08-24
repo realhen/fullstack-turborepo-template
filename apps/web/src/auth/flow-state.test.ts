@@ -35,6 +35,21 @@ describe('flow state', () => {
       expiresAt: 2_000,
     },
     {
+      kind: 'mfa-enrollment',
+      pendingAuthenticationToken: 'pending',
+      userId: 'user',
+      email: 'user@example.com',
+      returnTo: '/app',
+      expiresAt: 2_000,
+    },
+    {
+      kind: 'organization-selection',
+      pendingAuthenticationToken: 'pending',
+      organizations: [{ id: 'org', name: 'Organization' }],
+      returnTo: '/app',
+      expiresAt: 2_000,
+    },
+    {
       kind: 'radar-email',
       pendingAuthenticationToken: 'pending',
       challengeId: 'challenge',

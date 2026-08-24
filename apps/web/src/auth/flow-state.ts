@@ -23,6 +23,21 @@ export type AuthFlowState =
       expiresAt: number
     }
   | {
+      kind: 'mfa-enrollment'
+      pendingAuthenticationToken: string
+      userId: string
+      email: string
+      returnTo: string
+      expiresAt: number
+    }
+  | {
+      kind: 'organization-selection'
+      pendingAuthenticationToken: string
+      organizations: readonly { id: string; name: string }[]
+      returnTo: string
+      expiresAt: number
+    }
+  | {
       kind: 'radar-email' | 'radar-sms'
       pendingAuthenticationToken: string
       challengeId: string
@@ -64,6 +79,23 @@ const stateSchema = z.discriminatedUnion('kind', [
     kind: z.literal('mfa'),
     pendingAuthenticationToken: z.string().min(1),
     challengeId: z.string().min(1).optional(),
+    returnTo: z.string().min(1),
+    expiresAt,
+  }),
+  z.object({
+    kind: z.literal('mfa-enrollment'),
+    pendingAuthenticationToken: z.string().min(1),
+    userId: z.string().min(1),
+    email: z.string().email(),
+    returnTo: z.string().min(1),
+    expiresAt,
+  }),
+  z.object({
+    kind: z.literal('organization-selection'),
+    pendingAuthenticationToken: z.string().min(1),
+    organizations: z
+      .array(z.object({ id: z.string().min(1), name: z.string().min(1) }))
+      .min(1),
     returnTo: z.string().min(1),
     expiresAt,
   }),

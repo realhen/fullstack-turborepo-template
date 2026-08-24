@@ -22,6 +22,7 @@ export async function passwordAuthentication(input: {
     ? input.provider.signUp(credentials)
     : input.provider.authenticateWithPassword(credentials))
   const returnTo = safeReturnPath(input.returnTo)
+  const expiresAt = Date.now() + 600_000
   if (outcome.status === 'email-verification-required')
     return {
       outcome,
@@ -29,7 +30,51 @@ export async function passwordAuthentication(input: {
         kind: 'email-verification',
         pendingAuthenticationToken: outcome.pendingAuthenticationToken,
         returnTo,
-        expiresAt: Date.now() + 600_000,
+        expiresAt,
+      }),
+    }
+  if (outcome.status === 'mfa-enrollment-required')
+    return {
+      outcome,
+      flow: await input.flow.seal({
+        kind: 'mfa-enrollment',
+        pendingAuthenticationToken: outcome.pendingAuthenticationToken,
+        userId: outcome.user.id,
+        email: outcome.user.email,
+        returnTo,
+        expiresAt,
+      }),
+    }
+  if (outcome.status === 'mfa-required')
+    return {
+      outcome,
+      flow: await input.flow.seal({
+        kind: 'mfa',
+        pendingAuthenticationToken: outcome.pendingAuthenticationToken,
+        returnTo,
+        expiresAt,
+      }),
+    }
+  if (outcome.status === 'radar-challenge')
+    return {
+      outcome,
+      flow: await input.flow.seal({
+        kind: outcome.challenge.type === 'email' ? 'radar-email' : 'radar-sms',
+        pendingAuthenticationToken: outcome.pendingAuthenticationToken,
+        challengeId: outcome.challenge.challengeId,
+        returnTo,
+        expiresAt,
+      }),
+    }
+  if (outcome.status === 'organization-selection-required')
+    return {
+      outcome,
+      flow: await input.flow.seal({
+        kind: 'organization-selection',
+        pendingAuthenticationToken: outcome.pendingAuthenticationToken,
+        organizations: outcome.organizations,
+        returnTo,
+        expiresAt,
       }),
     }
   return { outcome, returnTo }

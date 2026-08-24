@@ -1,7 +1,9 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument, @typescript-eslint/no-unnecessary-type-assertion */
 import { createHash } from 'node:crypto'
 import { describe, expect, it, vi } from 'vitest'
-import { WorkosAuthenticationProvider } from './workos-provider'
+import {
+  WorkosAuthenticationProvider,
+  type WorkosClient,
+} from './workos-provider'
 const config = {
   mode: 'workos' as const,
   apiKey: 'sk',
@@ -29,7 +31,7 @@ describe('WorkOS adapter', () => {
     const authenticateWithPassword = vi.fn().mockResolvedValue(response)
     const provider = new WorkosAuthenticationProvider(config, {
       userManagement: { authenticateWithPassword },
-    } as any)
+    } as unknown as WorkosClient)
     await expect(
       provider.authenticateWithPassword({
         email: 'user@app.test',
@@ -57,7 +59,7 @@ describe('WorkOS adapter', () => {
       .mockReturnValue('https://workos.test/authorize')
     const provider = new WorkosAuthenticationProvider(config, {
       userManagement: { getAuthorizationUrl },
-    } as any)
+    } as unknown as WorkosClient)
     await provider.authorizationUrl({
       codeVerifier: 'verifier',
       state: 'state',

@@ -6,13 +6,22 @@ export interface AuthenticatedUser {
   firstName?: string
   lastName?: string
 }
+export interface TransitionUser {
+  id: string
+  email: string
+}
 export interface MfaFactor {
   id: string
   type: 'totp'
 }
+export interface OrganizationChoice {
+  id: string
+  name: string
+}
 export interface RadarChallenge {
   type: 'email' | 'sms'
   challengeId: string
+  user?: TransitionUser
 }
 export type AuthInput = AuthRequestContext & { signalsId?: string }
 export type PasswordSignUpInput = AuthInput & {
@@ -24,6 +33,7 @@ export type PasswordSignUpInput = AuthInput & {
 export type PasswordSignInInput = AuthInput & {
   email: string
   password: string
+  radarAuthAttemptId?: string
 }
 export type MagicAuthStartInput = AuthInput & { email: string }
 export type MagicAuthStartResult = { radarAuthAttemptId?: string }
@@ -38,9 +48,7 @@ export type EmailVerificationInput = AuthInput & {
 }
 export type PasswordResetStartInput = { email: string }
 export type PasswordResetCompleteInput = { token: string; password: string }
-export type TotpEnrollmentInput = AuthInput & {
-  pendingAuthenticationToken: string
-}
+export type TotpEnrollmentInput = AuthInput & { userId: string }
 export type TotpEnrollmentResult = {
   challengeId: string
   secret: string
@@ -49,23 +57,28 @@ export type TotpEnrollmentResult = {
 export type TotpChallengeInput = AuthInput & {
   pendingAuthenticationToken: string
   code: string
-  challengeId?: string
+  challengeId: string
 }
 export type RadarChallengeStartInput = AuthInput & {
+  userId: string
   pendingAuthenticationToken: string
-  challengeId: string
-  phoneNumber?: string
+  phoneNumber: string
 }
-export type RadarChallengeStartResult = void
+export type RadarChallengeStartResult = {
+  verificationId: string
+  phoneNumber: string
+}
 export type RadarChallengeCompleteInput = AuthInput & {
   pendingAuthenticationToken: string
   challengeId: string
   code: string
   type: 'email' | 'sms'
+  verificationId?: string
+  phoneNumber?: string
 }
 export type AuthorizationUrlInput = AuthInput & {
-  provider?: string
-  organizationId?: string
+  provider?: 'GoogleOAuth' | 'MicrosoftOAuth' | 'GitHubOAuth' | 'AppleOAuth'
+  connectionId?: string
   state: string
   codeVerifier: string
 }
@@ -99,6 +112,11 @@ export type AuthenticationOutcome =
       pendingAuthenticationToken: string
     }
   | {
+      status: 'mfa-enrollment-required'
+      pendingAuthenticationToken: string
+      user: TransitionUser
+    }
+  | {
       status: 'mfa-required'
       pendingAuthenticationToken: string
       factors: readonly MfaFactor[]
@@ -108,6 +126,12 @@ export type AuthenticationOutcome =
       pendingAuthenticationToken: string
       challenge: RadarChallenge
     }
+  | {
+      status: 'organization-selection-required'
+      pendingAuthenticationToken: string
+      organizations: readonly OrganizationChoice[]
+    }
+  | { status: 'sso-required'; connectionIds: readonly string[] }
   | { status: 'blocked' }
 export interface AuthenticationProvider {
   signUp(input: PasswordSignUpInput): Promise<AuthenticationOutcome>
@@ -133,8 +157,6 @@ export interface AuthenticationProvider {
   exchangeAuthorizationCode(
     input: AuthorizationCodeInput,
   ): Promise<AuthenticationOutcome>
-  resolveSsoOrganization(
-    email: string,
-  ): Promise<{ organizationId: string } | null>
+  resolveSsoConnection(email: string): Promise<{ connectionId: string } | null>
   loadSession(sealedSession: string): Promise<ProviderSession>
 }
