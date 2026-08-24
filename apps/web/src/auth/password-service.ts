@@ -1,5 +1,5 @@
 import type { FlowStateCodec } from './flow-state'
-import type { AuthenticationProvider } from './provider'
+import type { AuthenticationOutcome, AuthenticationProvider } from './provider'
 import type { AuthRequestContext } from './request-context'
 import { safeReturnPath } from './return-path'
 export async function passwordAuthentication(input: {
@@ -21,8 +21,25 @@ export async function passwordAuthentication(input: {
   const outcome = await (input.signUp
     ? input.provider.signUp(credentials)
     : input.provider.authenticateWithPassword(credentials))
+  return routeAuthenticationOutcome({
+    provider: input.provider,
+    flow: input.flow,
+    outcome,
+    email: input.email,
+    returnTo: input.returnTo,
+  })
+}
+
+export async function routeAuthenticationOutcome(input: {
+  provider: AuthenticationProvider
+  flow: FlowStateCodec
+  outcome: AuthenticationOutcome
+  email: string
+  returnTo?: string | undefined
+}) {
   const returnTo = safeReturnPath(input.returnTo)
   const expiresAt = Date.now() + 600_000
+  const outcome = input.outcome
   if (outcome.status === 'email-verification-required')
     return {
       outcome,
@@ -115,13 +132,7 @@ export async function verifyPasswordEmail(input: {
   context: AuthRequestContext
   signalsId?: string | undefined
 }) {
-  const flow = (await input.flow.unseal(
-    input.flowValue,
-    'email-verification',
-  )) as Extract<
-    Awaited<ReturnType<FlowStateCodec['unseal']>>,
-    { kind: 'email-verification' }
-  >
+  const flow = await input.flow.unseal(input.flowValue, 'email-verification')
   return input.provider.verifyEmail({
     ...input.context,
     code: input.code,

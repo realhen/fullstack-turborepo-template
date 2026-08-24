@@ -4,7 +4,10 @@ export type AuthActionState = {
   fields?: Record<string, string>
 }
 export function actionStateFromError(error: unknown): AuthActionState {
-  if (error instanceof Error && /credential/i.test(error.message))
+  if (
+    error instanceof Error &&
+    /credential|invalid password/i.test(error.message)
+  )
     return {
       code: 'invalid_credentials',
       message: 'Unable to sign in with those credentials.',

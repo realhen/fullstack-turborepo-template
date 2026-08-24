@@ -1,12 +1,13 @@
 import Link from 'next/link'
 import { AuthCard } from '@/components/auth/auth-card'
+import { AuthForm } from '@/components/auth/auth-form'
 import { AuthField } from '@/components/auth/auth-field'
 import { AuthSubmit } from '@/components/auth/auth-submit'
 import { signInAction } from '@/auth/actions/password'
 export default function SignInPage() {
   return (
     <AuthCard title="Sign in">
-      <form action={signInAction}>
+      <AuthForm action={signInAction}>
         <AuthField
           autoComplete="email"
           label="Email"
@@ -22,7 +23,7 @@ export default function SignInPage() {
           required
         />
         <AuthSubmit>Sign in</AuthSubmit>
-      </form>
+      </AuthForm>
       <p className="mt-4 text-sm">
         <Link href="/magic-auth">Use an email code</Link> ·{' '}
         <Link href="/forgot-password">Forgot password?</Link> ·{' '}

@@ -28,6 +28,9 @@ export type AuthFlowState =
       pendingAuthenticationToken: string
       userId: string
       email: string
+      challengeId?: string
+      secret?: string
+      uri?: string
       returnTo: string
       expiresAt: number
     }
@@ -49,6 +52,8 @@ export type AuthFlowState =
       kind: 'radar-sms'
       pendingAuthenticationToken: string
       userId: string
+      verificationId?: string
+      phoneNumber?: string
       returnTo: string
       expiresAt: number
     }
@@ -70,10 +75,11 @@ export type AuthFlowState =
   | { kind: 'password-reset'; token: string; expiresAt: number }
 export interface FlowStateCodec {
   seal(state: AuthFlowState): Promise<string>
-  unseal(
+  unseal<K extends AuthFlowState['kind']>(
     value: string,
-    expectedKind?: AuthFlowState['kind'],
-  ): Promise<AuthFlowState>
+    expectedKind: K,
+  ): Promise<Extract<AuthFlowState, { kind: K }>>
+  unseal(value: string, expectedKind?: never): Promise<AuthFlowState>
 }
 const expiresAt = z.number().finite()
 const stateSchema = z.discriminatedUnion('kind', [
@@ -105,6 +111,9 @@ const stateSchema = z.discriminatedUnion('kind', [
     pendingAuthenticationToken: z.string().min(1),
     userId: z.string().min(1),
     email: z.string().email(),
+    challengeId: z.string().min(1).optional(),
+    secret: z.string().min(1).optional(),
+    uri: z.string().min(1).optional(),
     returnTo: z.string().min(1),
     expiresAt,
   }),
@@ -128,6 +137,11 @@ const stateSchema = z.discriminatedUnion('kind', [
     kind: z.literal('radar-sms'),
     pendingAuthenticationToken: z.string().min(1),
     userId: z.string().min(1),
+    verificationId: z.string().min(1).optional(),
+    phoneNumber: z
+      .string()
+      .regex(/^\+[1-9]\d{7,14}$/)
+      .optional(),
     returnTo: z.string().min(1),
     expiresAt,
   }),
@@ -163,7 +177,7 @@ export function createFlowStateCodec(
         .setProtectedHeader({ alg: 'dir', enc: 'A256GCM', typ: state.kind })
         .encrypt(key)
     },
-    async unseal(value, expectedKind) {
+    async unseal(value: string, expectedKind?: AuthFlowState['kind']) {
       const { plaintext, protectedHeader } = await compactDecrypt(value, key)
       const state = stateSchema.parse(
         JSON.parse(new TextDecoder().decode(plaintext)),

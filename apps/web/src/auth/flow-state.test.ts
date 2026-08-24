@@ -68,6 +68,8 @@ describe('flow state', () => {
       kind: 'radar-sms',
       pendingAuthenticationToken: 'pending',
       userId: 'user',
+      verificationId: 'verification',
+      phoneNumber: '+14165551234',
       returnTo: '/app',
       expiresAt: 2_000,
     },
