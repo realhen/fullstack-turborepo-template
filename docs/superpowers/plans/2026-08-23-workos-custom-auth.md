@@ -39,7 +39,8 @@
 **Interfaces:**
 
 ```ts
-export type SocialProvider = 'GoogleOAuth' | 'MicrosoftOAuth' | 'GitHubOAuth' | 'AppleOAuth'
+export type SocialProvider =
+  'GoogleOAuth' | 'MicrosoftOAuth' | 'GitHubOAuth' | 'AppleOAuth'
 
 export type WebAuthConfig =
   | { mode: 'local'; sessionCookieName: string }
@@ -84,7 +85,9 @@ export interface AuthRequestContext {
 }
 
 export function requestContextFromHeaders(headers: Headers): AuthRequestContext
-export function safeReturnPath(value: FormDataEntryValue | string | null | undefined): string
+export function safeReturnPath(
+  value: FormDataEntryValue | string | null | undefined,
+): string
 ```
 
 - [ ] Test that `x-vercel-forwarded-for` takes precedence, `x-forwarded-for` is the documented fallback, only the first syntactically valid address is accepted, and arbitrary client-IP headers are ignored. Test missing/blank user agents.
@@ -107,17 +110,56 @@ export function safeReturnPath(value: FormDataEntryValue | string | null | undef
 
 ```ts
 export type AuthFlowState =
-  | { kind: 'email-verification'; pendingAuthenticationToken: string; returnTo: string; expiresAt: number }
-  | { kind: 'magic-auth'; email: string; radarAuthAttemptId?: string; returnTo: string; expiresAt: number }
-  | { kind: 'mfa'; pendingAuthenticationToken: string; challengeId?: string; returnTo: string; expiresAt: number }
-  | { kind: 'radar-email'; pendingAuthenticationToken: string; challengeId: string; returnTo: string; expiresAt: number }
-  | { kind: 'radar-sms'; pendingAuthenticationToken: string; challengeId: string; returnTo: string; expiresAt: number }
-  | { kind: 'oauth'; state: string; codeVerifier: string; signalsId?: string; returnTo: string; expiresAt: number }
+  | {
+      kind: 'email-verification'
+      pendingAuthenticationToken: string
+      returnTo: string
+      expiresAt: number
+    }
+  | {
+      kind: 'magic-auth'
+      email: string
+      radarAuthAttemptId?: string
+      returnTo: string
+      expiresAt: number
+    }
+  | {
+      kind: 'mfa'
+      pendingAuthenticationToken: string
+      challengeId?: string
+      returnTo: string
+      expiresAt: number
+    }
+  | {
+      kind: 'radar-email'
+      pendingAuthenticationToken: string
+      challengeId: string
+      returnTo: string
+      expiresAt: number
+    }
+  | {
+      kind: 'radar-sms'
+      pendingAuthenticationToken: string
+      challengeId: string
+      returnTo: string
+      expiresAt: number
+    }
+  | {
+      kind: 'oauth'
+      state: string
+      codeVerifier: string
+      signalsId?: string
+      returnTo: string
+      expiresAt: number
+    }
   | { kind: 'password-reset'; token: string; expiresAt: number }
 
 export interface FlowStateCodec {
   seal(state: AuthFlowState): Promise<string>
-  unseal(value: string, expectedKind?: AuthFlowState['kind']): Promise<AuthFlowState>
+  unseal(
+    value: string,
+    expectedKind?: AuthFlowState['kind'],
+  ): Promise<AuthFlowState>
 }
 ```
 
@@ -143,27 +185,55 @@ export interface FlowStateCodec {
 
 ```ts
 export type AuthenticationOutcome =
-  | { status: 'authenticated'; sealedSession: string; accessToken: string; user: AuthenticatedUser }
-  | { status: 'email-verification-required'; pendingAuthenticationToken: string }
-  | { status: 'mfa-required'; pendingAuthenticationToken: string; factors: readonly MfaFactor[] }
-  | { status: 'radar-challenge'; pendingAuthenticationToken: string; challenge: RadarChallenge }
+  | {
+      status: 'authenticated'
+      sealedSession: string
+      accessToken: string
+      user: AuthenticatedUser
+    }
+  | {
+      status: 'email-verification-required'
+      pendingAuthenticationToken: string
+    }
+  | {
+      status: 'mfa-required'
+      pendingAuthenticationToken: string
+      factors: readonly MfaFactor[]
+    }
+  | {
+      status: 'radar-challenge'
+      pendingAuthenticationToken: string
+      challenge: RadarChallenge
+    }
   | { status: 'blocked' }
 
 export interface AuthenticationProvider {
   signUp(input: PasswordSignUpInput): Promise<AuthenticationOutcome>
-  authenticateWithPassword(input: PasswordSignInInput): Promise<AuthenticationOutcome>
+  authenticateWithPassword(
+    input: PasswordSignInInput,
+  ): Promise<AuthenticationOutcome>
   sendMagicAuthCode(input: MagicAuthStartInput): Promise<MagicAuthStartResult>
-  authenticateWithMagicAuth(input: MagicAuthCompleteInput): Promise<AuthenticationOutcome>
+  authenticateWithMagicAuth(
+    input: MagicAuthCompleteInput,
+  ): Promise<AuthenticationOutcome>
   verifyEmail(input: EmailVerificationInput): Promise<AuthenticationOutcome>
   startPasswordReset(input: PasswordResetStartInput): Promise<void>
   resetPassword(input: PasswordResetCompleteInput): Promise<void>
   enrollTotp(input: TotpEnrollmentInput): Promise<TotpEnrollmentResult>
   authenticateTotp(input: TotpChallengeInput): Promise<AuthenticationOutcome>
-  startRadarChallenge(input: RadarChallengeStartInput): Promise<RadarChallengeStartResult>
-  completeRadarChallenge(input: RadarChallengeCompleteInput): Promise<AuthenticationOutcome>
+  startRadarChallenge(
+    input: RadarChallengeStartInput,
+  ): Promise<RadarChallengeStartResult>
+  completeRadarChallenge(
+    input: RadarChallengeCompleteInput,
+  ): Promise<AuthenticationOutcome>
   authorizationUrl(input: AuthorizationUrlInput): Promise<string>
-  exchangeAuthorizationCode(input: AuthorizationCodeInput): Promise<AuthenticationOutcome>
-  resolveSsoOrganization(email: string): Promise<{ organizationId: string } | null>
+  exchangeAuthorizationCode(
+    input: AuthorizationCodeInput,
+  ): Promise<AuthenticationOutcome>
+  resolveSsoOrganization(
+    email: string,
+  ): Promise<{ organizationId: string } | null>
   loadSession(sealedSession: string): Promise<ProviderSession>
 }
 ```
@@ -189,10 +259,17 @@ export interface AuthenticationProvider {
 
 ```ts
 export type SessionAuthentication =
-  | { authenticated: true; user: AuthenticatedUser; accessToken: string; replacementCookie?: string }
+  | {
+      authenticated: true
+      user: AuthenticatedUser
+      accessToken: string
+      replacementCookie?: string
+    }
   | { authenticated: false; clearCookie: boolean }
 
-export async function authenticateWebSession(input: SessionInput): Promise<SessionAuthentication>
+export async function authenticateWebSession(
+  input: SessionInput,
+): Promise<SessionAuthentication>
 export async function currentApiAuthorization(): Promise<string | undefined>
 ```
 
@@ -385,4 +462,3 @@ export const config = { matcher: ['/app/:path*'] }
 - [ ] Commit any verification-only fixes as `fix(auth): resolve authentication verification findings`.
 - [ ] Submit the verified diff to an independent read-only security-focused review. Resolve every valid fix-first finding and rerun affected focused tests plus the full uncached check.
 - [ ] Push the feature branch, open a pull request targeting `main`, wait for required checks, and report the exact PR URL and merge readiness. Do not merge unless separately authorized.
-
