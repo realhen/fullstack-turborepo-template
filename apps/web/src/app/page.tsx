@@ -21,8 +21,15 @@ export default async function HomePage() {
         </p>
 
         <div className="mt-10 flex flex-wrap items-center gap-4">
-          <a href="/sign-up"><Button>Get started</Button></a>
-          <a className="rounded-lg border border-zinc-800 px-4 py-2 font-mono text-sm text-zinc-300" href="/sign-in">Sign in</a>
+          <a href="/sign-up">
+            <Button>Get started</Button>
+          </a>
+          <a
+            className="rounded-lg border border-zinc-800 px-4 py-2 font-mono text-sm text-zinc-300"
+            href="/sign-in"
+          >
+            Sign in
+          </a>
           <a
             className="rounded-lg border border-zinc-800 px-4 py-2 font-mono text-sm text-zinc-300"
             href="/health"
