@@ -94,13 +94,16 @@ export class WorkosAuthenticationProvider implements AuthenticationProvider {
     }
   }
   async signUp(input: Parameters<AuthenticationProvider['signUp']>[0]) {
-    await this.client.userManagement.createUser!({
+    const created = (await this.client.userManagement.createUser!({
       ...context(input),
       email: input.email,
       ...(input.firstName ? { firstName: input.firstName } : {}),
       ...(input.lastName ? { lastName: input.lastName } : {}),
       password: input.password,
-    } as never)
+    } as never)) as { radarAuthAttemptId?: string }
+    return created.radarAuthAttemptId
+      ? { radarAuthAttemptId: created.radarAuthAttemptId }
+      : {}
   }
   async authenticateWithPassword(
     input: Parameters<AuthenticationProvider['authenticateWithPassword']>[0],
@@ -123,10 +126,16 @@ export class WorkosAuthenticationProvider implements AuthenticationProvider {
   async sendMagicAuthCode(
     input: Parameters<AuthenticationProvider['sendMagicAuthCode']>[0],
   ) {
-    return this.client.userManagement.createMagicAuth!({
+    const created = (await this.client.userManagement.createMagicAuth!({
       ...context(input),
       email: input.email,
-    } as never) as Promise<{ radarAuthAttemptId?: string }>
+      ...(input.radarAuthAttemptId
+        ? { radarAuthAttemptId: input.radarAuthAttemptId }
+        : {}),
+    } as never)) as { radarAuthAttemptId?: string }
+    const radarAuthAttemptId =
+      created.radarAuthAttemptId ?? input.radarAuthAttemptId
+    return radarAuthAttemptId ? { radarAuthAttemptId } : {}
   }
   async authenticateWithMagicAuth(
     input: Parameters<AuthenticationProvider['authenticateWithMagicAuth']>[0],

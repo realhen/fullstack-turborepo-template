@@ -1,7 +1,11 @@
 import { cookies } from 'next/headers'
 import { authCookieOptions, deleteAuthCookieOptions } from './cookies'
 import { getWebAuthConfig, type WebAuthConfig } from './config'
-import type { AuthenticationProvider, AuthenticatedUser } from './provider'
+import type {
+  AuthenticationProvider,
+  AuthenticatedUser,
+  ProviderSession,
+} from './provider'
 import { WorkosAuthenticationProvider } from './workos-provider'
 export type SessionAuthentication =
   | {
@@ -23,22 +27,46 @@ export function getAuthenticationProvider(
     ? new WorkosAuthenticationProvider(config)
     : undefined
 }
+function retryableSessionError(error: unknown) {
+  if (error instanceof TypeError) return true
+  if (error instanceof Error && error.cause instanceof TypeError) return true
+  if (!(error instanceof Error) || !('code' in error)) return false
+  const code = error.code
+  if (code === 'ERR_JWKS_TIMEOUT') return true
+  return (
+    code === 'ERR_JOSE_GENERIC' &&
+    /JSON Web Key Set HTTP response/.test(error.message)
+  )
+}
 export async function authenticateWebSession(
   input: SessionInput,
 ): Promise<SessionAuthentication> {
   if (input.config.mode === 'local')
     return { authenticated: false, clearCookie: false }
   if (!input.sealedSession) return { authenticated: false, clearCookie: false }
+  let loaded: ProviderSession
   try {
-    const loaded = await (input.provider ??
+    loaded = await (input.provider ??
       getAuthenticationProvider(input.config))!.loadSession(input.sealedSession)
-    const current = await loaded.authenticate()
-    if (current.authenticated && current.user && current.accessToken)
-      return {
-        authenticated: true,
-        user: current.user,
-        accessToken: current.accessToken,
-      }
+  } catch {
+    // No provider session can be formed from this cookie, so it is terminal.
+    return { authenticated: false, clearCookie: true }
+  }
+  let current: Awaited<ReturnType<ProviderSession['authenticate']>>
+  try {
+    current = await loaded.authenticate()
+  } catch (error) {
+    return retryableSessionError(error)
+      ? { authenticated: false, clearCookie: false, retryable: true }
+      : { authenticated: false, clearCookie: true }
+  }
+  if (current.authenticated && current.user && current.accessToken)
+    return {
+      authenticated: true,
+      user: current.user,
+      accessToken: current.accessToken,
+    }
+  try {
     const refreshed = await loaded.refresh()
     if (refreshed.authenticated)
       return {
@@ -50,8 +78,10 @@ export async function authenticateWebSession(
     return refreshed.retryable
       ? { authenticated: false, clearCookie: false, retryable: true }
       : { authenticated: false, clearCookie: true }
-  } catch {
-    return { authenticated: false, clearCookie: true }
+  } catch (error) {
+    return retryableSessionError(error)
+      ? { authenticated: false, clearCookie: false, retryable: true }
+      : { authenticated: false, clearCookie: true }
   }
 }
 export async function currentApiAuthorization(): Promise<string | undefined> {

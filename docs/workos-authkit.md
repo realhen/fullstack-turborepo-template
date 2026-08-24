@@ -158,7 +158,8 @@ AUTH_CLIENT_ID=<WORKOS_CLIENT_ID>
 Use the exact issuer and JWKS URI shown for the WorkOS environment. The
 `https://api.workos.com/sso/jwks/<WORKOS_CLIENT_ID>` form is the usual WorkOS
 SSO JWKS endpoint; use the environment-specific endpoint when WorkOS provides
-one. Set `AUTH_CLIENT_ID` to the same WorkOS client ID used by the web app.
+one. Production startup rejects non-HTTPS issuer and JWKS URLs. Set
+`AUTH_CLIENT_ID` to the same WorkOS client ID used by the web app.
 `AUTH_AUDIENCE` is optional and should be set only when the token's audience is
 an intentional API contract. The adapter validates the JWT signature, issuer,
 expiry, and configured audience/client ID before producing a provider-neutral

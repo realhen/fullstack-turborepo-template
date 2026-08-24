@@ -155,6 +155,17 @@ const envSchema = z
           path: ['AUTH_AUDIENCE'],
         })
       }
+      if (value.NODE_ENV === 'production') {
+        for (const key of ['AUTH_ISSUER', 'AUTH_JWKS_URI'] as const) {
+          if (value[key] && new URL(value[key]).protocol !== 'https:') {
+            context.addIssue({
+              code: 'custom',
+              message: `${key} must use HTTPS in production.`,
+              path: [key],
+            })
+          }
+        }
+      }
     }
   })
 

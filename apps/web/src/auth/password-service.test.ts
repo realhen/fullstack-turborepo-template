@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { createFlowStateCodec } from './flow-state'
 import { passwordAuthentication, signUpWithEmailCode } from './password-service'
 describe('password orchestration', () => {
@@ -66,6 +66,8 @@ describe('password orchestration', () => {
 
   it('gives new and duplicate sign-ups the same public email-code continuation', async () => {
     const flow = createFlowStateCodec('x'.repeat(32))
+    const successfulMagicStart = vi.fn().mockResolvedValue({})
+    const duplicateMagicStart = vi.fn().mockResolvedValue({})
     const input = {
       flow,
       context: {},
@@ -76,20 +78,28 @@ describe('password orchestration', () => {
     const successful = await signUpWithEmailCode({
       ...input,
       provider: {
-        signUp: () => Promise.resolve(),
-        sendMagicAuthCode: () => Promise.resolve({}),
+        signUp: () =>
+          Promise.resolve({ radarAuthAttemptId: 'attempt_from_creation' }),
+        sendMagicAuthCode: successfulMagicStart,
       } as never,
     })
     const duplicate = await signUpWithEmailCode({
       ...input,
       provider: {
         signUp: () => Promise.reject(new Error('user already exists')),
-        sendMagicAuthCode: () => Promise.resolve({}),
+        sendMagicAuthCode: duplicateMagicStart,
       } as never,
     })
 
     expect(successful.destination).toBe('/magic-auth?code=1')
     expect(duplicate.destination).toBe(successful.destination)
+    expect(successfulMagicStart).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'u@example.com',
+        radarAuthAttemptId: 'attempt_from_creation',
+      }),
+    )
+    expect(duplicateMagicStart).toHaveBeenCalledWith({ email: 'u@example.com' })
     const successfulState = await flow.unseal(successful.flow, 'magic-auth')
     const duplicateState = await flow.unseal(duplicate.flow, 'magic-auth')
     expect(successfulState).toMatchObject({

@@ -75,6 +75,46 @@ describe('authenticateWebSession', () => {
     })
   })
 
+  it('preserves the sealed cookie when current-session JWKS verification throws', async () => {
+    await expect(
+      authenticateWebSession({
+        config,
+        sealedSession: 'sealed',
+        provider: {
+          loadSession: async () => ({
+            authenticate: async () => {
+              throw Object.assign(new Error('request timed out'), {
+                code: 'ERR_JWKS_TIMEOUT',
+              })
+            },
+            refresh: async () => ({ authenticated: false, retryable: false }),
+          }),
+        } as any,
+      }),
+    ).resolves.toEqual({
+      authenticated: false,
+      clearCookie: false,
+      retryable: true,
+    })
+  })
+
+  it('clears the sealed cookie when authentication throws a terminal error', async () => {
+    await expect(
+      authenticateWebSession({
+        config,
+        sealedSession: 'sealed',
+        provider: {
+          loadSession: async () => ({
+            authenticate: async () => {
+              throw new Error('unrecoverable session data')
+            },
+            refresh: async () => ({ authenticated: false, retryable: false }),
+          }),
+        } as any,
+      }),
+    ).resolves.toEqual({ authenticated: false, clearCookie: true })
+  })
+
   it('clears the sealed cookie for terminal refresh failures', async () => {
     await expect(
       authenticateWebSession({

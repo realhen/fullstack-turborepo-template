@@ -28,12 +28,16 @@ export type PasswordSignUpInput = AuthInput & {
   firstName?: string
   lastName?: string
 }
+export type PasswordSignUpResult = { radarAuthAttemptId?: string }
 export type PasswordSignInInput = AuthInput & {
   email: string
   password: string
   radarAuthAttemptId?: string
 }
-export type MagicAuthStartInput = AuthInput & { email: string }
+export type MagicAuthStartInput = AuthInput & {
+  email: string
+  radarAuthAttemptId?: string
+}
 export type MagicAuthStartResult = { radarAuthAttemptId?: string }
 export type MagicAuthCompleteInput = AuthInput & {
   email: string
@@ -148,7 +152,7 @@ export type AuthenticationOutcome =
     }
   | { status: 'blocked' }
 export interface AuthenticationProvider {
-  signUp(input: PasswordSignUpInput): Promise<void>
+  signUp(input: PasswordSignUpInput): Promise<PasswordSignUpResult>
   authenticateWithPassword(
     input: PasswordSignInInput,
   ): Promise<AuthenticationOutcome>

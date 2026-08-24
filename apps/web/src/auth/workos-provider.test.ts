@@ -28,18 +28,22 @@ const response = {
 }
 describe('WorkOS adapter', () => {
   it('creates a password user without immediately authenticating it', async () => {
-    const createUser = vi.fn().mockResolvedValue({ id: 'user' })
+    const createUser = vi
+      .fn()
+      .mockResolvedValue({ id: 'user', radarAuthAttemptId: 'attempt' })
     const authenticateWithPassword = vi.fn()
     const provider = new WorkosAuthenticationProvider(config, {
       userManagement: { createUser, authenticateWithPassword },
     } as unknown as WorkosClient)
 
-    await provider.signUp({
-      email: 'user@app.test',
-      password: 'password',
-      ipAddress: '203.0.113.1',
-      userAgent: 'agent',
-    })
+    await expect(
+      provider.signUp({
+        email: 'user@app.test',
+        password: 'password',
+        ipAddress: '203.0.113.1',
+        userAgent: 'agent',
+      }),
+    ).resolves.toEqual({ radarAuthAttemptId: 'attempt' })
 
     expect(createUser).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -50,6 +54,27 @@ describe('WorkOS adapter', () => {
       }),
     )
     expect(authenticateWithPassword).not.toHaveBeenCalled()
+  })
+
+  it('threads a user-creation Radar attempt into Magic Auth creation', async () => {
+    const createMagicAuth = vi.fn().mockResolvedValue({})
+    const provider = new WorkosAuthenticationProvider(config, {
+      userManagement: { createMagicAuth },
+    } as unknown as WorkosClient)
+
+    await expect(
+      provider.sendMagicAuthCode({
+        email: 'user@app.test',
+        radarAuthAttemptId: 'attempt',
+        ipAddress: '203.0.113.1',
+      }),
+    ).resolves.toEqual({ radarAuthAttemptId: 'attempt' })
+
+    expect(createMagicAuth).toHaveBeenCalledWith({
+      email: 'user@app.test',
+      radarAuthAttemptId: 'attempt',
+      ipAddress: '203.0.113.1',
+    })
   })
 
   it('maps trusted context and opaque signals to password authentication and seals a session', async () => {

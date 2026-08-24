@@ -42,8 +42,13 @@ export async function signUpWithEmailCode(input: {
     email: input.email,
     ...(input.signalsId ? { signalsId: input.signalsId } : {}),
   }
+  let radarAuthAttemptId: string | undefined
   try {
-    await input.provider.signUp({ ...authInput, password: input.password })
+    const created = await input.provider.signUp({
+      ...authInput,
+      password: input.password,
+    })
+    radarAuthAttemptId = created.radarAuthAttemptId
   } catch {
     // New and existing accounts must have the same public continuation.
   }
@@ -51,7 +56,12 @@ export async function signUpWithEmailCode(input: {
     email: input.email,
     returnTo: safeReturnPath(input.returnTo),
     flow: input.flow,
-    start: (email) => input.provider.sendMagicAuthCode({ ...authInput, email }),
+    start: (email) =>
+      input.provider.sendMagicAuthCode({
+        ...authInput,
+        email,
+        ...(radarAuthAttemptId ? { radarAuthAttemptId } : {}),
+      }),
   })
   return { destination: '/magic-auth?code=1' as const, flow }
 }
