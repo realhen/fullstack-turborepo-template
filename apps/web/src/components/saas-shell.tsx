@@ -6,11 +6,11 @@ import type { ChangeEvent, ReactNode } from 'react'
 import type { Workspace } from '@/lib/saas.types'
 
 const navigation = [
-  { href: '/', label: 'Overview' },
-  { href: '/members', label: 'Members' },
-  { href: '/billing', label: 'Billing' },
-  { href: '/api-keys', label: 'API keys' },
-  { href: '/audit', label: 'Audit log' },
+  { href: '/app', label: 'Overview' },
+  { href: '/app/members', label: 'Members' },
+  { href: '/app/billing', label: 'Billing' },
+  { href: '/app/api-keys', label: 'API keys' },
+  { href: '/app/audit', label: 'Audit log' },
 ]
 
 export function SaasShell({
