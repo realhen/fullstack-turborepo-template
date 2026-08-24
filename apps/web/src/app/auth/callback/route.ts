@@ -7,7 +7,7 @@ import {
 } from '@/auth/cookies'
 import { getWebAuthConfig } from '@/auth/config'
 import { createFlowStateCodec } from '@/auth/flow-state'
-import { consumeOAuthCallback } from '@/auth/oauth-service'
+import { exchangeOAuthCallback } from '@/auth/oauth-service'
 import { routeAuthenticationOutcome } from '@/auth/password-service'
 import { currentAuthRequestContext } from '@/auth/request-context'
 import { getAuthenticationProvider, writeSessionCookie } from '@/auth/session'
@@ -44,28 +44,24 @@ export async function GET(request: Request) {
     ])
     if ([...query.keys()].some((key) => !allowed.has(key)))
       throw new Error('OAuth callback is invalid')
-    const callback = await consumeOAuthCallback({
+    const provider = getAuthenticationProvider(config)!
+    const callback = await exchangeOAuthCallback({
       flow: createFlowStateCodec(config.cookiePassword),
       value,
       state: query.get('state'),
       code: query.get('code'),
       error: query.get('error'),
+      context: await currentAuthRequestContext(),
+      provider,
     })
-    if ('error' in callback)
+    if (!('outcome' in callback))
       return NextResponse.redirect(
         new URL('/sign-in?error=oauth_failed', request.url),
       )
-    const provider = getAuthenticationProvider(config)!
-    const outcome = await provider.exchangeAuthorizationCode({
-      ...(await currentAuthRequestContext()),
-      code: callback.code,
-      codeVerifier: callback.codeVerifier,
-      ...(callback.signalsId ? { signalsId: callback.signalsId } : {}),
-    })
     const result = await routeAuthenticationOutcome({
       provider,
       flow: createFlowStateCodec(config.cookiePassword),
-      outcome,
+      outcome: callback.outcome,
       email: '',
       returnTo: callback.returnTo,
     })

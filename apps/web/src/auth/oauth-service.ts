@@ -1,6 +1,8 @@
 import { randomBytes } from 'node:crypto'
 import type { FlowStateCodec } from './flow-state'
 import type { SocialProvider } from './config'
+import type { AuthenticationProvider } from './provider'
+import type { AuthRequestContext } from './request-context'
 import { safeReturnPath } from './return-path'
 
 export function socialProvider(
@@ -56,4 +58,24 @@ export async function consumeOAuthCallback(input: {
     ...(stored.signalsId ? { signalsId: stored.signalsId } : {}),
     returnTo: stored.returnTo,
   }
+}
+
+export async function exchangeOAuthCallback(input: {
+  flow: FlowStateCodec
+  value: string
+  state: string | null
+  code?: string | null
+  error?: string | null
+  context: AuthRequestContext
+  provider: Pick<AuthenticationProvider, 'exchangeAuthorizationCode'>
+}) {
+  const callback = await consumeOAuthCallback(input)
+  if ('error' in callback) return callback
+  const outcome = await input.provider.exchangeAuthorizationCode({
+    ...input.context,
+    code: callback.code,
+    codeVerifier: callback.codeVerifier,
+    ...(callback.signalsId ? { signalsId: callback.signalsId } : {}),
+  })
+  return { ...callback, outcome }
 }

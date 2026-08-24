@@ -63,6 +63,20 @@ const envSchema = z
     WORKER_SECRET: z.string().min(16).optional(),
   })
   .superRefine((value, context) => {
+    const oidcConfigured = [
+      value.AUTH_ISSUER,
+      value.AUTH_JWKS_URI,
+      value.AUTH_AUDIENCE,
+      value.AUTH_CLIENT_ID,
+    ].some(Boolean)
+    if (value.AUTH_MODE !== 'oidc' && oidcConfigured) {
+      context.addIssue({
+        code: 'custom',
+        message: 'OIDC variables require AUTH_MODE=oidc.',
+        path: ['AUTH_MODE'],
+      })
+    }
+
     if (value.NODE_ENV === 'production' && value.AUTH_MODE === 'local') {
       context.addIssue({
         code: 'custom',

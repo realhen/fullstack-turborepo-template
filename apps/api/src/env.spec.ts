@@ -13,4 +13,13 @@ describe('validateEnvironment', () => {
       ).toBe(mode)
     },
   )
+
+  it.each([
+    ['AUTH_ISSUER', 'https://issuer.example.com/'],
+    ['AUTH_JWKS_URI', 'https://issuer.example.com/.well-known/jwks.json'],
+    ['AUTH_AUDIENCE', 'api-audience'],
+    ['AUTH_CLIENT_ID', 'client-id'],
+  ])('rejects %s unless AUTH_MODE=oidc', (key, value) => {
+    expect(() => validateEnvironment({ [key]: value })).toThrow()
+  })
 })

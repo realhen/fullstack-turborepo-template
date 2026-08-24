@@ -181,13 +181,17 @@ export async function completeRadarChallengeAction(
   }
 }
 
-export async function beginSsoAction(): Promise<AuthActionState | void> {
+export async function beginSsoAction(
+  formData: FormData,
+): Promise<AuthActionState | void> {
   const { value, codec, config } = await workosFlow()
   try {
     const state = await codec.unseal(value, 'sso')
+    const signalsId = z.string().min(1).safeParse(formData.get('signalsId'))
     const next = await createOAuthFlow({
       flow: codec,
       returnTo: state.returnTo,
+      ...(signalsId.success ? { signalsId: signalsId.data } : {}),
     })
     const url = await getAuthenticationProvider(config)!.authorizationUrl({
       ...(await currentAuthRequestContext()),

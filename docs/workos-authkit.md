@@ -248,7 +248,6 @@ The custom UI routes are:
 /verify-email            verification-code form
 /auth/challenge          TOTP, organization, and Radar transitions
 /auth/sso                enterprise SSO transition
-/auth/oauth/:provider    social OAuth start
 /auth/callback           state-checked OAuth callback
 ```
 

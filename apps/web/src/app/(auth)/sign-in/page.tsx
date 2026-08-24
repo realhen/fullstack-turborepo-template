@@ -1,5 +1,8 @@
 import Link from 'next/link'
-import { beginEnterpriseSsoAction } from '@/auth/actions/oauth'
+import {
+  beginEnterpriseSsoAction,
+  beginSocialOAuthAction,
+} from '@/auth/actions/oauth'
 import { AuthCard } from '@/components/auth/auth-card'
 import { AuthForm } from '@/components/auth/auth-form'
 import { AuthField } from '@/components/auth/auth-field'
@@ -52,13 +55,13 @@ export default async function SignInPage({
       {config.mode === 'workos' && config.socialProviders.length ? (
         <div className="mt-6 space-y-2" aria-label="Social sign-in options">
           {config.socialProviders.map((provider) => (
-            <Link
-              className="block rounded border border-zinc-700 px-4 py-2 text-sm"
-              href={`/auth/oauth/${provider}?returnTo=${encodeURIComponent(returnTo)}`}
-              key={provider}
-            >
-              Continue with {provider.replace('OAuth', '')}
-            </Link>
+            <AuthForm action={beginSocialOAuthAction} key={provider}>
+              <input name="provider" type="hidden" value={provider} />
+              <input name="returnTo" type="hidden" value={returnTo} />
+              <AuthSubmit>
+                {`Continue with ${provider.replace('OAuth', '')}`}
+              </AuthSubmit>
+            </AuthForm>
           ))}
         </div>
       ) : null}

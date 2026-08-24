@@ -3,6 +3,7 @@ import { createFlowStateCodec } from './flow-state'
 import {
   createOAuthFlow,
   consumeOAuthCallback,
+  exchangeOAuthCallback,
   socialProvider,
 } from './oauth-service'
 
@@ -72,5 +73,38 @@ describe('OAuth orchestration', () => {
         error: 'access_denied',
       }),
     ).resolves.toEqual({ consumed: true, error: true, returnTo: '/app' })
+  })
+
+  it('passes sealed Radar signals and trusted context to code exchange', async () => {
+    const created = await createOAuthFlow({
+      flow,
+      returnTo: '/app',
+      signalsId: 'opaque-signals',
+      random: () => 'random-value',
+    })
+    let exchangeInput: unknown
+
+    await expect(
+      exchangeOAuthCallback({
+        flow,
+        value: created.value,
+        state: created.state,
+        code: 'authorization-code',
+        context: { ipAddress: '203.0.113.1', userAgent: 'agent' },
+        provider: {
+          exchangeAuthorizationCode: (input) => {
+            exchangeInput = input
+            return Promise.resolve({ status: 'blocked' as const })
+          },
+        },
+      }),
+    ).resolves.toMatchObject({ outcome: { status: 'blocked' } })
+    expect(exchangeInput).toEqual({
+      code: 'authorization-code',
+      codeVerifier: 'random-value',
+      ipAddress: '203.0.113.1',
+      userAgent: 'agent',
+      signalsId: 'opaque-signals',
+    })
   })
 })
