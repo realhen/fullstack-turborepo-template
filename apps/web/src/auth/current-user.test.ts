@@ -31,7 +31,10 @@ describe('getCurrentUser', () => {
                 lastName: 'Lovelace',
               },
             }),
-            refresh: async () => ({ authenticated: false }),
+            refresh: async () => ({
+              authenticated: false,
+              retryable: false,
+            }),
             logoutUrl: async () => 'https://auth.test/logout',
           }),
         },

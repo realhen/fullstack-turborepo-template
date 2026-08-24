@@ -95,12 +95,19 @@ export interface ProviderSession {
     accessToken?: string
     user?: AuthenticatedUser
   }>
-  refresh(): Promise<{
-    authenticated: boolean
-    sealedSession?: string
-    accessToken?: string
-    user?: AuthenticatedUser
-  }>
+  refresh(): Promise<
+    | {
+        authenticated: true
+        sealedSession: string
+        accessToken: string
+        user: AuthenticatedUser
+      }
+    | {
+        authenticated: false
+        retryable: boolean
+        reason?: string
+      }
+  >
   logoutUrl(returnTo: string): Promise<string>
 }
 export type AuthenticationOutcome =
@@ -141,7 +148,7 @@ export type AuthenticationOutcome =
     }
   | { status: 'blocked' }
 export interface AuthenticationProvider {
-  signUp(input: PasswordSignUpInput): Promise<AuthenticationOutcome>
+  signUp(input: PasswordSignUpInput): Promise<void>
   authenticateWithPassword(
     input: PasswordSignInInput,
   ): Promise<AuthenticationOutcome>

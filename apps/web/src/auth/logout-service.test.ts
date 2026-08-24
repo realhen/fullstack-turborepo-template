@@ -21,7 +21,9 @@ describe('logoutDestination', () => {
       accessToken: 'access',
       user: { id: 'user', email: 'user@example.com' },
     })
-    const refresh = vi.fn().mockResolvedValue({ authenticated: false })
+    const refresh = vi
+      .fn()
+      .mockResolvedValue({ authenticated: false, retryable: false })
     const logoutUrl = vi.fn(
       async (returnTo: string) =>
         `https://auth.test/logout?returnTo=${encodeURIComponent(returnTo)}`,
@@ -120,7 +122,10 @@ describe('logoutDestination', () => {
           requestedReturnTo = returnTo
           return 'https://auth.test/logout'
         },
-        refresh: async () => ({ authenticated: false }),
+        refresh: async () => ({
+          authenticated: false as const,
+          retryable: false,
+        }),
       }),
     }
 

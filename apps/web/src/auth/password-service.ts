@@ -1,6 +1,7 @@
 import type { FlowStateCodec } from './flow-state'
 import type { AuthenticationOutcome, AuthenticationProvider } from './provider'
 import type { AuthRequestContext } from './request-context'
+import { startMagicAuth } from './recovery-service'
 import { safeReturnPath } from './return-path'
 export async function passwordAuthentication(input: {
   provider: AuthenticationProvider
@@ -10,7 +11,6 @@ export async function passwordAuthentication(input: {
   password: string
   returnTo?: string | undefined
   signalsId?: string | undefined
-  signUp?: boolean
 }) {
   const credentials = {
     ...input.context,
@@ -18,9 +18,7 @@ export async function passwordAuthentication(input: {
     password: input.password,
     ...(input.signalsId ? { signalsId: input.signalsId } : {}),
   }
-  const outcome = await (input.signUp
-    ? input.provider.signUp(credentials)
-    : input.provider.authenticateWithPassword(credentials))
+  const outcome = await input.provider.authenticateWithPassword(credentials)
   return routeAuthenticationOutcome({
     provider: input.provider,
     flow: input.flow,
@@ -28,6 +26,34 @@ export async function passwordAuthentication(input: {
     email: input.email,
     returnTo: input.returnTo,
   })
+}
+
+export async function signUpWithEmailCode(input: {
+  provider: AuthenticationProvider
+  flow: FlowStateCodec
+  context: AuthRequestContext
+  email: string
+  password: string
+  returnTo?: string | undefined
+  signalsId?: string | undefined
+}) {
+  const authInput = {
+    ...input.context,
+    email: input.email,
+    ...(input.signalsId ? { signalsId: input.signalsId } : {}),
+  }
+  try {
+    await input.provider.signUp({ ...authInput, password: input.password })
+  } catch {
+    // New and existing accounts must have the same public continuation.
+  }
+  const flow = await startMagicAuth({
+    email: input.email,
+    returnTo: safeReturnPath(input.returnTo),
+    flow: input.flow,
+    start: (email) => input.provider.sendMagicAuthCode({ ...authInput, email }),
+  })
+  return { destination: '/magic-auth?code=1' as const, flow }
 }
 
 export async function routeAuthenticationOutcome(input: {

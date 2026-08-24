@@ -26,6 +26,7 @@ export async function beginSocialOAuthAction(
     return { code: 'validation_error', message: 'Choose a sign-in provider.' }
   const config = getWebAuthConfig()
   if (config.mode === 'local') redirect(safeReturnPath(parsed.data.returnTo))
+  let destination: string
   try {
     const selected = socialProvider(
       parsed.data.provider,
@@ -37,7 +38,7 @@ export async function beginSocialOAuthAction(
       ...(parsed.data.returnTo ? { returnTo: parsed.data.returnTo } : {}),
       ...(parsed.data.signalsId ? { signalsId: parsed.data.signalsId } : {}),
     })
-    const url = await getAuthenticationProvider(config)!.authorizationUrl({
+    destination = await getAuthenticationProvider(config)!.authorizationUrl({
       ...(await currentAuthRequestContext()),
       provider: selected,
       codeVerifier: created.codeVerifier,
@@ -48,10 +49,10 @@ export async function beginSocialOAuthAction(
       created.value,
       authCookieOptions('flow', process.env.NODE_ENV === 'production'),
     )
-    redirect(url)
   } catch (error) {
     return actionErrorState(error)
   }
+  redirect(destination)
 }
 
 export async function beginEnterpriseSsoAction(
@@ -68,6 +69,7 @@ export async function beginEnterpriseSsoAction(
     return { code: 'validation_error', message: 'Enter a valid work email.' }
   const config = getWebAuthConfig()
   if (config.mode === 'local') redirect(safeReturnPath(parsed.data.returnTo))
+  let destination: string
   try {
     const provider = getAuthenticationProvider(config)!
     const connection = await provider.resolveSsoConnection(parsed.data.email)
@@ -82,7 +84,7 @@ export async function beginEnterpriseSsoAction(
       ...(parsed.data.returnTo ? { returnTo: parsed.data.returnTo } : {}),
       ...(parsed.data.signalsId ? { signalsId: parsed.data.signalsId } : {}),
     })
-    const url = await provider.authorizationUrl({
+    destination = await provider.authorizationUrl({
       ...(await currentAuthRequestContext()),
       connectionId: connection.connectionId,
       codeVerifier: created.codeVerifier,
@@ -93,8 +95,8 @@ export async function beginEnterpriseSsoAction(
       created.value,
       authCookieOptions('flow', process.env.NODE_ENV === 'production'),
     )
-    redirect(url)
   } catch (error) {
     return actionErrorState(error)
   }
+  redirect(destination)
 }

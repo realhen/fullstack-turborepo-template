@@ -166,9 +166,9 @@ routes remain accessible without a session. Authenticated users visiting sign-in
 sign-up are redirected to `/app`.
 
 Access-token refresh uses the WorkOS sealed-session helper and rotated refresh token.
-Concurrent refreshes must not overwrite a newer cookie with stale session data. A
-refresh failure clears the session and redirects to sign-in rather than retrying in a
-loop.
+Concurrent refreshes must not overwrite a newer cookie with stale session data.
+Terminal refresh failures clear the session and redirect to sign-in. Retryable WorkOS
+failures return a temporary 503 and preserve the sealed cookie for a later request.
 
 The server-side API client loads the authenticated session and forwards only its
 current access token as `Authorization: Bearer ...`. `API_AUTH_TOKEN` remains a local
@@ -180,15 +180,12 @@ mode escape hatch and is forbidden as a production WorkOS substitute.
 
 `/sign-up` collects email, password, and optional first/last name. The Server Action
 normalizes the email, obtains trusted request context, passes Radar signals, and asks
-WorkOS to create the user. Depending on the WorkOS response it either:
-
-- authenticates and establishes the sealed session;
-- moves to `/verify-email` with pending state held in the encrypted flow cookie;
-- moves to the required MFA or Radar challenge; or
-- returns safe validation feedback.
-
-Duplicate-account behavior does not reveal whether an email already exists beyond the
-behavior WorkOS explicitly requires for a safe recovery path.
+WorkOS to create the user. Whether creation succeeds or the email already exists, the
+action sends a Magic Auth code when possible and moves to the same custom email-code
+screen with only encrypted flow state. This common continuation prevents the route,
+copy, and UI state from revealing account existence. The password remains available
+for later password sign-in; the initial email code proves address control and
+establishes the sealed session.
 
 ### Email and password sign-in
 

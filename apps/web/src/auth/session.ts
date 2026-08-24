@@ -10,7 +10,7 @@ export type SessionAuthentication =
       accessToken: string
       replacementCookie?: string
     }
-  | { authenticated: false; clearCookie: boolean }
+  | { authenticated: false; clearCookie: boolean; retryable?: true }
 export type SessionInput = {
   sealedSession?: string
   config: WebAuthConfig
@@ -40,15 +40,15 @@ export async function authenticateWebSession(
         accessToken: current.accessToken,
       }
     const refreshed = await loaded.refresh()
-    return refreshed.authenticated && refreshed.user && refreshed.accessToken
-      ? {
-          authenticated: true,
-          user: refreshed.user,
-          accessToken: refreshed.accessToken,
-          ...(refreshed.sealedSession
-            ? { replacementCookie: refreshed.sealedSession }
-            : {}),
-        }
+    if (refreshed.authenticated)
+      return {
+        authenticated: true,
+        user: refreshed.user,
+        accessToken: refreshed.accessToken,
+        replacementCookie: refreshed.sealedSession,
+      }
+    return refreshed.retryable
+      ? { authenticated: false, clearCookie: false, retryable: true }
       : { authenticated: false, clearCookie: true }
   } catch {
     return { authenticated: false, clearCookie: true }

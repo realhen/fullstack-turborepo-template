@@ -94,19 +94,13 @@ export class WorkosAuthenticationProvider implements AuthenticationProvider {
     }
   }
   async signUp(input: Parameters<AuthenticationProvider['signUp']>[0]) {
-    const createdUser = await this.client.userManagement.createUser!({
+    await this.client.userManagement.createUser!({
       ...context(input),
       email: input.email,
       ...(input.firstName ? { firstName: input.firstName } : {}),
       ...(input.lastName ? { lastName: input.lastName } : {}),
       password: input.password,
     } as never)
-    return this.authenticateWithPassword({
-      ...input,
-      ...(createdUser.radarAuthAttemptId
-        ? { radarAuthAttemptId: createdUser.radarAuthAttemptId }
-        : {}),
-    })
   }
   async authenticateWithPassword(
     input: Parameters<AuthenticationProvider['authenticateWithPassword']>[0],
@@ -341,6 +335,8 @@ export class WorkosAuthenticationProvider implements AuthenticationProvider {
         authenticated: boolean
         sealedSession?: string
         session?: Auth
+        retryable?: boolean
+        reason?: string
       }>
       getLogoutUrl(input: { returnTo: string }): Promise<string>
     }
@@ -367,7 +363,11 @@ export class WorkosAuthenticationProvider implements AuthenticationProvider {
               sealedSession: response.sealedSession,
               user: user(response.session.user),
             }
-          : { authenticated: false }
+          : {
+              authenticated: false,
+              retryable: response.retryable === true,
+              ...(response.reason ? { reason: response.reason } : {}),
+            }
       },
       logoutUrl: (returnTo) => session.getLogoutUrl({ returnTo }),
     })

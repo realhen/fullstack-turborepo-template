@@ -51,4 +51,46 @@ describe('authenticateWebSession', () => {
       }),
     ).resolves.toEqual({ authenticated: false, clearCookie: false })
   })
+
+  it('preserves the sealed cookie for retryable refresh failures', async () => {
+    await expect(
+      authenticateWebSession({
+        config,
+        sealedSession: 'sealed',
+        provider: {
+          loadSession: async () => ({
+            authenticate: async () => ({ authenticated: false }),
+            refresh: async () => ({
+              authenticated: false,
+              retryable: true,
+              reason: 'network_error',
+            }),
+          }),
+        } as any,
+      }),
+    ).resolves.toEqual({
+      authenticated: false,
+      clearCookie: false,
+      retryable: true,
+    })
+  })
+
+  it('clears the sealed cookie for terminal refresh failures', async () => {
+    await expect(
+      authenticateWebSession({
+        config,
+        sealedSession: 'sealed',
+        provider: {
+          loadSession: async () => ({
+            authenticate: async () => ({ authenticated: false }),
+            refresh: async () => ({
+              authenticated: false,
+              retryable: false,
+              reason: 'invalid_refresh_token',
+            }),
+          }),
+        } as any,
+      }),
+    ).resolves.toEqual({ authenticated: false, clearCookie: true })
+  })
 })

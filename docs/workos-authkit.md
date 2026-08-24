@@ -240,7 +240,7 @@ The custom UI routes are:
 
 ```text
 /sign-in                 password, social, and SSO entry
-/sign-up                 account creation
+/sign-up                 account creation with a non-enumerating email-code continuation
 /magic-auth              Magic Auth start and code completion
 /forgot-password         generic password-recovery request
 /reset-password          one-time token capture and clean redirect
@@ -255,6 +255,11 @@ All pending authentication material is held in the encrypted HttpOnly flow
 cookie. Successful transitions write the sealed session cookie before
 redirecting. Logout is a POST-backed action that clears local cookies and then
 uses the WorkOS logout URL when a valid session is available.
+
+Sign-up always continues to the same Magic Auth code screen for both newly
+created and already-existing emails. This avoids revealing account existence;
+the password remains available for later password sign-in, while the initial
+email code proves control of the address and establishes the session.
 
 ## Local and CI mode
 

@@ -6,6 +6,12 @@ export const config = { matcher: ['/app/:path*'] }
 export function requiresAuthentication(pathname: string) {
   return pathname === '/app' || pathname.startsWith('/app/')
 }
+export function temporaryAuthenticationResponse() {
+  return new NextResponse('Authentication is temporarily unavailable.', {
+    status: 503,
+    headers: { 'cache-control': 'no-store', 'retry-after': '5' },
+  })
+}
 export async function proxy(request: NextRequest) {
   if (!requiresAuthentication(request.nextUrl.pathname))
     return NextResponse.next()
@@ -28,6 +34,7 @@ export async function proxy(request: NextRequest) {
       )
     return response
   }
+  if (result.retryable) return temporaryAuthenticationResponse()
   const destination = new URL('/sign-in', request.url)
   destination.searchParams.set(
     'returnTo',

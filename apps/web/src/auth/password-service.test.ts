@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createFlowStateCodec } from './flow-state'
-import { passwordAuthentication } from './password-service'
+import { passwordAuthentication, signUpWithEmailCode } from './password-service'
 describe('password orchestration', () => {
   it('keeps a server transition token encrypted rather than returning it to the browser', async () => {
     const result = await passwordAuthentication({
@@ -62,5 +62,48 @@ describe('password orchestration', () => {
     await expect(flow.unseal(result.flow, 'sso')).resolves.toMatchObject({
       connectionId: 'conn_from_exception',
     })
+  })
+
+  it('gives new and duplicate sign-ups the same public email-code continuation', async () => {
+    const flow = createFlowStateCodec('x'.repeat(32))
+    const input = {
+      flow,
+      context: {},
+      email: 'u@example.com',
+      password: 'password',
+      returnTo: '/app',
+    }
+    const successful = await signUpWithEmailCode({
+      ...input,
+      provider: {
+        signUp: () => Promise.resolve(),
+        sendMagicAuthCode: () => Promise.resolve({}),
+      } as never,
+    })
+    const duplicate = await signUpWithEmailCode({
+      ...input,
+      provider: {
+        signUp: () => Promise.reject(new Error('user already exists')),
+        sendMagicAuthCode: () => Promise.resolve({}),
+      } as never,
+    })
+
+    expect(successful.destination).toBe('/magic-auth?code=1')
+    expect(duplicate.destination).toBe(successful.destination)
+    const successfulState = await flow.unseal(successful.flow, 'magic-auth')
+    const duplicateState = await flow.unseal(duplicate.flow, 'magic-auth')
+    expect(successfulState).toMatchObject({
+      email: 'u@example.com',
+      kind: 'magic-auth',
+      returnTo: '/app',
+    })
+    expect(duplicateState).toMatchObject({
+      email: successfulState.email,
+      kind: successfulState.kind,
+      returnTo: successfulState.returnTo,
+    })
+    expect(
+      Math.abs(successfulState.expiresAt - duplicateState.expiresAt),
+    ).toBeLessThan(100)
   })
 })

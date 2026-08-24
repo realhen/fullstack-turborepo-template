@@ -28,14 +28,15 @@ async function workosFlow() {
   return { config, value, codec: createFlowStateCodec(config.cookiePassword) }
 }
 
-async function replaceFlow(value: string) {
-  const { config } = await workosFlow()
+async function replaceFlow(
+  config: Extract<ReturnType<typeof getWebAuthConfig>, { mode: 'workos' }>,
+  value: string,
+) {
   ;(await cookies()).set(
     flowCookieName(config),
     value,
     authCookieOptions('flow', process.env.NODE_ENV === 'production'),
   )
-  redirect('/auth/challenge')
 }
 
 export async function startTotpEnrollmentAction(): Promise<AuthActionState | void> {
@@ -47,10 +48,11 @@ export async function startTotpEnrollmentAction(): Promise<AuthActionState | voi
       flowValue: value,
       context: await currentAuthRequestContext(),
     })
-    await replaceFlow(result.flow)
+    await replaceFlow(config, result.flow)
   } catch (error) {
     return actionErrorState(error)
   }
+  redirect('/auth/challenge')
 }
 
 export async function startTotpChallengeAction(
@@ -62,6 +64,7 @@ export async function startTotpChallengeAction(
   const { value, codec, config } = await workosFlow()
   try {
     await replaceFlow(
+      config,
       await startTotpChallenge({
         provider: getAuthenticationProvider(config)!,
         flow: codec,
@@ -72,6 +75,7 @@ export async function startTotpChallengeAction(
   } catch (error) {
     return actionErrorState(error)
   }
+  redirect('/auth/challenge')
 }
 
 export async function completeTotpChallengeAction(
@@ -140,6 +144,7 @@ export async function startRadarSmsChallengeAction(
   const { value, codec, config } = await workosFlow()
   try {
     await replaceFlow(
+      config,
       await startRadarSmsChallenge({
         provider: getAuthenticationProvider(config)!,
         flow: codec,
@@ -151,6 +156,7 @@ export async function startRadarSmsChallengeAction(
   } catch (error) {
     return actionErrorState(error)
   }
+  redirect('/auth/challenge')
 }
 
 export async function completeRadarChallengeAction(
@@ -185,6 +191,7 @@ export async function beginSsoAction(
   formData: FormData,
 ): Promise<AuthActionState | void> {
   const { value, codec, config } = await workosFlow()
+  let destination: string
   try {
     const state = await codec.unseal(value, 'sso')
     const signalsId = z.string().min(1).safeParse(formData.get('signalsId'))
@@ -193,7 +200,7 @@ export async function beginSsoAction(
       returnTo: state.returnTo,
       ...(signalsId.success ? { signalsId: signalsId.data } : {}),
     })
-    const url = await getAuthenticationProvider(config)!.authorizationUrl({
+    destination = await getAuthenticationProvider(config)!.authorizationUrl({
       ...(await currentAuthRequestContext()),
       connectionId: state.connectionId,
       codeVerifier: next.codeVerifier,
@@ -204,8 +211,8 @@ export async function beginSsoAction(
       next.value,
       authCookieOptions('flow', process.env.NODE_ENV === 'production'),
     )
-    redirect(url)
   } catch (error) {
     return actionErrorState(error)
   }
+  redirect(destination)
 }

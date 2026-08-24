@@ -27,6 +27,31 @@ const response = {
   },
 }
 describe('WorkOS adapter', () => {
+  it('creates a password user without immediately authenticating it', async () => {
+    const createUser = vi.fn().mockResolvedValue({ id: 'user' })
+    const authenticateWithPassword = vi.fn()
+    const provider = new WorkosAuthenticationProvider(config, {
+      userManagement: { createUser, authenticateWithPassword },
+    } as unknown as WorkosClient)
+
+    await provider.signUp({
+      email: 'user@app.test',
+      password: 'password',
+      ipAddress: '203.0.113.1',
+      userAgent: 'agent',
+    })
+
+    expect(createUser).toHaveBeenCalledWith(
+      expect.objectContaining({
+        email: 'user@app.test',
+        password: 'password',
+        ipAddress: '203.0.113.1',
+        userAgent: 'agent',
+      }),
+    )
+    expect(authenticateWithPassword).not.toHaveBeenCalled()
+  })
+
   it('maps trusted context and opaque signals to password authentication and seals a session', async () => {
     const authenticateWithPassword = vi.fn().mockResolvedValue(response)
     const provider = new WorkosAuthenticationProvider(config, {
@@ -149,5 +174,28 @@ describe('WorkOS adapter', () => {
         session: { cookiePassword: config.cookiePassword, sealSession: true },
       }),
     )
+  })
+
+  it('preserves retryable WorkOS refresh failures', async () => {
+    const loadSealedSession = vi.fn().mockReturnValue({
+      authenticate: () => Promise.resolve({ authenticated: false }),
+      refresh: () =>
+        Promise.resolve({
+          authenticated: false,
+          retryable: true,
+          reason: 'network_error',
+        }),
+      getLogoutUrl: () => Promise.resolve('https://auth.test/logout'),
+    })
+    const provider = new WorkosAuthenticationProvider(config, {
+      userManagement: { loadSealedSession },
+    } as unknown as WorkosClient)
+
+    const session = await provider.loadSession('sealed')
+    await expect(session.refresh()).resolves.toEqual({
+      authenticated: false,
+      retryable: true,
+      reason: 'network_error',
+    })
   })
 })

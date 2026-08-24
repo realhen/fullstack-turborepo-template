@@ -14,6 +14,7 @@ import { createFlowStateCodec } from '../flow-state'
 import {
   passwordAuthentication,
   routeAuthenticationOutcome,
+  signUpWithEmailCode,
   verifyPasswordEmail,
 } from '../password-service'
 import { currentAuthRequestContext } from '../request-context'
@@ -70,7 +71,6 @@ export async function continueAuthenticationOutcome(input: {
 
 async function passwordAction(
   formData: FormData,
-  signUp: boolean,
 ): Promise<AuthActionState | void> {
   const value = credentials.safeParse(Object.fromEntries(formData))
   if (!value.success)
@@ -87,7 +87,6 @@ async function passwordAction(
       flow: createFlowStateCodec(config.cookiePassword),
       context: await currentAuthRequestContext(),
       ...value.data,
-      signUp,
     })
   } catch (error) {
     return actionErrorState(error)
@@ -100,11 +99,38 @@ async function passwordAction(
 }
 
 export async function signInAction(formData: FormData) {
-  return passwordAction(formData, false)
+  return passwordAction(formData)
 }
 
-export async function signUpAction(formData: FormData) {
-  return passwordAction(formData, true)
+export async function signUpAction(
+  formData: FormData,
+): Promise<AuthActionState | void> {
+  const value = credentials.safeParse(Object.fromEntries(formData))
+  if (!value.success)
+    return {
+      code: 'validation_error',
+      message: 'Enter a valid email address and password.',
+    }
+  const config = getWebAuthConfig()
+  if (config.mode === 'local') redirect(safeReturnPath(value.data.returnTo))
+  let destination: '/magic-auth?code=1'
+  try {
+    const result = await signUpWithEmailCode({
+      provider: getAuthenticationProvider(config)!,
+      flow: createFlowStateCodec(config.cookiePassword),
+      context: await currentAuthRequestContext(),
+      ...value.data,
+    })
+    ;(await cookies()).set(
+      flowCookieName(config),
+      result.flow,
+      authCookieOptions('flow', process.env.NODE_ENV === 'production'),
+    )
+    destination = result.destination
+  } catch (error) {
+    return actionErrorState(error)
+  }
+  redirect(destination)
 }
 
 export async function verifyEmailAction(
