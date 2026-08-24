@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { actionStateFromError } from './action-state'
 describe('action state', () => {
-  it('keeps credential and unknown failures safe', () => {
+  it('does not classify account-sensitive provider messages', () => {
     expect(actionStateFromError(new Error('invalid password'))).toMatchObject({
-      code: 'invalid_credentials',
+      code: 'service_unavailable',
+    })
+    expect(
+      actionStateFromError(new Error('email already exists')),
+    ).toMatchObject({
+      code: 'service_unavailable',
     })
     expect(actionStateFromError(new Error('provider exploded'))).toMatchObject({
       code: 'service_unavailable',

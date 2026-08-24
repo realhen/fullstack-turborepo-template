@@ -240,6 +240,7 @@ export class WorkosAuthenticationProvider implements AuthenticationProvider {
       const { phoneNumber, verificationId } = input
       return this.transition(() =>
         this.client.userManagement.authenticateWithRadarSmsChallenge({
+          ...context(input),
           code: input.code,
           pendingAuthenticationToken: input.pendingAuthenticationToken,
           phoneNumber,
@@ -258,6 +259,7 @@ export class WorkosAuthenticationProvider implements AuthenticationProvider {
     const challengeId = input.challengeId
     return this.transition(() =>
       this.client.userManagement.authenticateWithRadarEmailChallenge({
+        ...context(input),
         code: input.code,
         pendingAuthenticationToken: input.pendingAuthenticationToken,
         radarChallengeId: challengeId,

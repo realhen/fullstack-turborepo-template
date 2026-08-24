@@ -28,3 +28,28 @@ it('seals the Magic Auth email and opaque Radar attempt', async () => {
     radarAuthAttemptId: 'radar_attempt',
   })
 })
+
+it('starts Magic Auth with the same public continuation when WorkOS rejects', async () => {
+  const flow = createFlowStateCodec('y'.repeat(32), () => 1)
+  const success = await startMagicAuth({
+    email: 'user@example.com',
+    returnTo: '/app',
+    flow,
+    start: () => Promise.resolve({}),
+  })
+  const failure = await startMagicAuth({
+    email: 'user@example.com',
+    returnTo: '/app',
+    flow,
+    start: () => Promise.reject(new Error('unknown user')),
+  })
+
+  await expect(flow.unseal(success, 'magic-auth')).resolves.toMatchObject({
+    email: 'user@example.com',
+    returnTo: '/app',
+  })
+  await expect(flow.unseal(failure, 'magic-auth')).resolves.toMatchObject({
+    email: 'user@example.com',
+    returnTo: '/app',
+  })
+})

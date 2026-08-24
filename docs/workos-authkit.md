@@ -15,22 +15,22 @@ and token permissions never grant application data access by themselves.
 
 Keep configuration in the environment that owns the trust boundary:
 
-| Variable                       | Where it belongs                                   | Purpose                                                                                         |
-| ------------------------------ | -------------------------------------------------- | ----------------------------------------------------------------------------------------------- |
-| `WORKOS_API_KEY`               | Vercel server environment only                     | Server-to-server WorkOS User Management and OAuth calls.                                        |
-| `WORKOS_CLIENT_ID`             | Vercel server environment                          | WorkOS project/client selected by the server.                                                   |
-| `WORKOS_COOKIE_PASSWORD`       | Vercel server environment only                     | At least 32 characters of high-entropy key material for sealed session and flow cookies.        |
-| `WORKOS_REDIRECT_URI`          | Vercel server environment                          | The registered callback URL, normally `https://app.example.com/auth/callback`.                  |
-| `WORKOS_SESSION_COOKIE_NAME`   | Vercel server environment                          | Optional sealed session cookie name; defaults to `saas_session`.                                |
-| `WORKOS_FLOW_COOKIE_NAME`      | Vercel server environment                          | Optional encrypted pending-flow cookie name; defaults to `saas_auth_flow`.                      |
-| `WORKOS_SOCIAL_PROVIDERS`      | Vercel server environment                          | Comma-separated allow-list of `GoogleOAuth`, `MicrosoftOAuth`, `GitHubOAuth`, and `AppleOAuth`. |
-| `WORKOS_RADAR_MODE`            | Vercel server environment                          | `off`, `log`, or `enforce`; start with `off` or `log`.                                          |
-| `NEXT_PUBLIC_WORKOS_CLIENT_ID` | Vercel browser-visible environment, only for Radar | The same client ID used by the Radar Signals collector; it is not a secret.                     |
-| `AUTH_MODE`                    | API runtime                                        | Set to `oidc` for a deployed API.                                                               |
-| `AUTH_ISSUER`                  | API runtime and CDK context                        | Exact issuer for the WorkOS environment.                                                        |
-| `AUTH_JWKS_URI`                | API runtime and CDK context                        | WorkOS JWKS endpoint for the client/environment.                                                |
-| `AUTH_CLIENT_ID`               | API runtime and CDK context                        | WorkOS client ID; use this when WorkOS access tokens do not have a usable audience.             |
-| `AUTH_AUDIENCE`                | API runtime and CDK context, optional              | Audience claim required by the generic OIDC adapter when the provider uses one.                 |
+| Variable                       | Where it belongs                                   | Purpose                                                                                                                |
+| ------------------------------ | -------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `WORKOS_API_KEY`               | Vercel server environment only                     | Server-to-server WorkOS User Management and OAuth calls.                                                               |
+| `WORKOS_CLIENT_ID`             | Vercel server environment                          | WorkOS project/client selected by the server.                                                                          |
+| `WORKOS_COOKIE_PASSWORD`       | Vercel server environment only                     | Generate with `openssl rand -base64 48`; at least 32 high-entropy characters, never placeholders or repeated material. |
+| `WORKOS_REDIRECT_URI`          | Vercel server environment                          | The registered callback URL, normally `https://app.example.com/auth/callback`.                                         |
+| `WORKOS_SESSION_COOKIE_NAME`   | Vercel server environment                          | Optional sealed session cookie name; defaults to `saas_session`; must differ from the flow name.                       |
+| `WORKOS_FLOW_COOKIE_NAME`      | Vercel server environment                          | Optional encrypted pending-flow cookie name; defaults to `saas_auth_flow`; must differ from session.                   |
+| `WORKOS_SOCIAL_PROVIDERS`      | Vercel server environment                          | Comma-separated allow-list of `GoogleOAuth`, `MicrosoftOAuth`, `GitHubOAuth`, and `AppleOAuth`.                        |
+| `WORKOS_RADAR_MODE`            | Vercel server environment                          | `off`, `log`, or `enforce`; start with `off` or `log`.                                                                 |
+| `NEXT_PUBLIC_WORKOS_CLIENT_ID` | Vercel browser-visible environment, only for Radar | Required for `log`/`enforce` and must exactly equal `WORKOS_CLIENT_ID`; it is not a secret.                            |
+| `AUTH_MODE`                    | API runtime                                        | Set to `oidc` for a deployed API.                                                                                      |
+| `AUTH_ISSUER`                  | API runtime and CDK context                        | Exact issuer for the WorkOS environment.                                                                               |
+| `AUTH_JWKS_URI`                | API runtime and CDK context                        | WorkOS JWKS endpoint for the client/environment.                                                                       |
+| `AUTH_CLIENT_ID`               | API runtime and CDK context                        | WorkOS client ID; use this when WorkOS access tokens do not have a usable audience.                                    |
+| `AUTH_AUDIENCE`                | API runtime and CDK context, optional              | Audience claim required by the generic OIDC adapter when the provider uses one.                                        |
 
 The API does not receive `WORKOS_API_KEY`, `WORKOS_COOKIE_PASSWORD`, refresh
 tokens, or the web session cookie. Do not add those values to NestJS, CDK
@@ -215,7 +215,7 @@ In the Vercel project/environment matching the WorkOS environment, configure:
 WEB_AUTH_MODE=workos
 WORKOS_API_KEY=<server-secret>
 WORKOS_CLIENT_ID=<workos-client-id>
-WORKOS_COOKIE_PASSWORD=<random-value-at-least-32-characters>
+WORKOS_COOKIE_PASSWORD=<output-of-openssl-rand-base64-48>
 WORKOS_REDIRECT_URI=https://app.example.com/auth/callback
 WORKOS_SESSION_COOKIE_NAME=saas_session
 WORKOS_FLOW_COOKIE_NAME=saas_auth_flow
@@ -231,6 +231,10 @@ same environment. Keep `WORKOS_API_KEY` and `WORKOS_COOKIE_PASSWORD` out of
 sealed session/flow cookies; schedule that as a session reset. Rotate the
 WorkOS API key through Vercel's secret store and redeploy rather than committing
 it.
+
+Leave `NEXT_PUBLIC_WORKOS_CLIENT_ID` unset while `WORKOS_RADAR_MODE=off`.
+When Radar is `log` or `enforce`, set it to the exact same value as
+`WORKOS_CLIENT_ID`; the web configuration rejects a missing or mismatched value.
 
 The custom UI routes are:
 

@@ -20,11 +20,16 @@ export async function startMagicAuth(input: {
   flow: FlowStateCodec
   start: (email: string) => Promise<{ radarAuthAttemptId?: string }>
 }) {
-  const result = await input.start(input.email)
+  let result: { radarAuthAttemptId?: string } | undefined
+  try {
+    result = await input.start(input.email)
+  } catch {
+    // The custom code-entry route must not reveal whether the email exists.
+  }
   return input.flow.seal({
     kind: 'magic-auth',
     email: input.email,
-    ...(result.radarAuthAttemptId
+    ...(result?.radarAuthAttemptId
       ? { radarAuthAttemptId: result.radarAuthAttemptId }
       : {}),
     returnTo: input.returnTo,

@@ -25,6 +25,29 @@ const providers = z.enum([
 ])
 const mode = z.enum(['local', 'workos'])
 const radar = z.enum(['off', 'log', 'enforce'])
+const cookiePassword = z
+  .string()
+  .min(32)
+  .refine((value) => !/^(.)(\1)*$/.test(value), {
+    message: 'WORKOS_COOKIE_PASSWORD must not repeat one character',
+  })
+  .refine(
+    (value) =>
+      !/^(?:change|example|password|secret|replace|your|test|todo)/i.test(
+        value,
+      ),
+    { message: 'WORKOS_COOKIE_PASSWORD must not use placeholder material' },
+  )
+  .refine(
+    (value) =>
+      [/[a-z]/, /[A-Z]/, /\d/, /[^\w\s]/].filter((pattern) =>
+        pattern.test(value),
+      ).length >= 3,
+    {
+      message:
+        'WORKOS_COOKIE_PASSWORD must contain at least three character classes',
+    },
+  )
 
 export function getWebAuthConfig(
   env: NodeJS.ProcessEnv = process.env,
@@ -56,7 +79,7 @@ export function getWebAuthConfig(
     .object({
       apiKey: z.string().min(1),
       clientId: z.string().min(1),
-      cookiePassword: z.string().min(32),
+      cookiePassword,
       redirectUri: z.string().url(),
       sessionCookieName: z.string().min(1).default('saas_session'),
       flowCookieName: z.string().min(1).default('saas_auth_flow'),
@@ -73,6 +96,15 @@ export function getWebAuthConfig(
     })
   if (production && new URL(parsed.redirectUri).protocol !== 'https:')
     throw new Error('WORKOS_REDIRECT_URI must use HTTPS in production')
+  if (parsed.sessionCookieName === parsed.flowCookieName)
+    throw new Error('WorkOS session and flow cookie names must be distinct')
+  if (
+    parsed.radarMode !== 'off' &&
+    env.NEXT_PUBLIC_WORKOS_CLIENT_ID !== parsed.clientId
+  )
+    throw new Error(
+      'NEXT_PUBLIC_WORKOS_CLIENT_ID must match WORKOS_CLIENT_ID when Radar is enabled',
+    )
   const socialProviders = (env.WORKOS_SOCIAL_PROVIDERS ?? '')
     .split(',')
     .filter(Boolean)

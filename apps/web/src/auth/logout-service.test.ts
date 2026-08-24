@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/require-await */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { logoutCookieOptions, logoutDestination } from './logout-service'
 
 const config = {
@@ -16,12 +16,21 @@ const config = {
 
 describe('logoutDestination', () => {
   it('uses the WorkOS logout URL for a valid sealed session', async () => {
+    const authenticate = vi.fn().mockResolvedValue({
+      authenticated: true,
+      accessToken: 'access',
+      user: { id: 'user', email: 'user@example.com' },
+    })
+    const refresh = vi.fn().mockResolvedValue({ authenticated: false })
+    const logoutUrl = vi.fn(
+      async (returnTo: string) =>
+        `https://auth.test/logout?returnTo=${encodeURIComponent(returnTo)}`,
+    )
     const provider = {
       loadSession: async () => ({
-        authenticate: async () => ({ authenticated: false }),
-        logoutUrl: async (returnTo: string) =>
-          `https://auth.test/logout?returnTo=${encodeURIComponent(returnTo)}`,
-        refresh: async () => ({ authenticated: false }),
+        authenticate,
+        logoutUrl,
+        refresh,
       }),
     }
 
@@ -35,6 +44,34 @@ describe('logoutDestination', () => {
     ).resolves.toBe(
       'https://auth.test/logout?returnTo=https%3A%2F%2Fapp.test%2Fsigned-out',
     )
+    expect(authenticate).toHaveBeenCalledOnce()
+    expect(refresh).not.toHaveBeenCalled()
+    expect(logoutUrl).toHaveBeenCalledOnce()
+  })
+
+  it('refreshes an expired sealed session before obtaining its logout URL', async () => {
+    const refresh = vi.fn().mockResolvedValue({
+      authenticated: true,
+      sealedSession: 'refreshed',
+      accessToken: 'access',
+      user: { id: 'user', email: 'user@example.com' },
+    })
+    const logoutUrl = vi.fn().mockResolvedValue('https://auth.test/logout')
+    await expect(
+      logoutDestination({
+        config,
+        sealedSession: 'expired',
+        provider: {
+          loadSession: async () => ({
+            authenticate: async () => ({ authenticated: false }),
+            refresh,
+            logoutUrl,
+          }),
+        },
+      }),
+    ).resolves.toBe('https://auth.test/logout')
+    expect(refresh).toHaveBeenCalledOnce()
+    expect(logoutUrl).toHaveBeenCalledOnce()
   })
 
   it('falls back locally for local mode, missing sessions, and invalid sessions', async () => {
@@ -61,7 +98,11 @@ describe('logoutDestination', () => {
     let requestedReturnTo = ''
     const provider = {
       loadSession: async () => ({
-        authenticate: async () => ({ authenticated: false }),
+        authenticate: async () => ({
+          authenticated: true,
+          accessToken: 'access',
+          user: { id: 'user', email: 'user@example.com' },
+        }),
         logoutUrl: async (returnTo: string) => {
           requestedReturnTo = returnTo
           return 'https://auth.test/logout'

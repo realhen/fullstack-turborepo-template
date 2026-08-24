@@ -116,10 +116,11 @@ describe('provider errors', () => {
       connectionIds: ['conn_1'],
     })
   })
-  it('keeps ordinary credential failures generic', () => {
+  it('does not classify provider messages that could enumerate accounts', () => {
     expect(publicAuthError(new Error('invalid password'))).toEqual({
-      code: 'invalid_credentials',
-      message: 'Unable to sign in with those credentials.',
+      code: 'service_unavailable',
+      message: 'Authentication is temporarily unavailable. Please try again.',
+      cause: 'Error',
     })
   })
 })

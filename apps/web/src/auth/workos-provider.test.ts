@@ -87,13 +87,36 @@ describe('WorkOS adapter', () => {
       challengeId: 'ignored',
       verificationId: 'verification',
       phoneNumber: '+14165551234',
+      ipAddress: '203.0.113.1',
+      userAgent: 'agent',
     })
     expect(authenticateWithRadarSmsChallenge).toHaveBeenCalledWith(
       expect.objectContaining({
+        ipAddress: '203.0.113.1',
+        userAgent: 'agent',
         verificationId: 'verification',
         phoneNumber: '+14165551234',
         pendingAuthenticationToken: 'pending',
       }),
+    )
+  })
+  it('passes trusted context to Radar email completion', async () => {
+    const authenticateWithRadarEmailChallenge = vi
+      .fn()
+      .mockResolvedValue(response)
+    const provider = new WorkosAuthenticationProvider(config, {
+      userManagement: { authenticateWithRadarEmailChallenge },
+    } as unknown as WorkosClient)
+    await provider.completeRadarChallenge({
+      type: 'email',
+      code: '123456',
+      pendingAuthenticationToken: 'pending',
+      challengeId: 'challenge',
+      ipAddress: '203.0.113.1',
+      userAgent: 'agent',
+    })
+    expect(authenticateWithRadarEmailChallenge).toHaveBeenCalledWith(
+      expect.objectContaining({ ipAddress: '203.0.113.1', userAgent: 'agent' }),
     )
   })
   it('starts a TOTP challenge from a trusted factor ID', async () => {

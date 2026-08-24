@@ -53,6 +53,11 @@ export async function logoutDestination(
   try {
     const session = await (input.provider ??
       getAuthenticationProvider(input.config))!.loadSession(input.sealedSession)
+    const authenticated = await session.authenticate()
+    if (!authenticated.authenticated) {
+      const refreshed = await session.refresh()
+      if (!refreshed.authenticated) return '/'
+    }
     const destination = await session.logoutUrl(
       workosLogoutReturnUrl(input.config, input.returnTo),
     )
