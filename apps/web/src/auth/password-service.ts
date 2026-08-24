@@ -108,15 +108,20 @@ export async function routeAuthenticationOutcome(input: {
       }),
     }
   if (outcome.status === 'sso-required') {
-    const connection = await input.provider.resolveSsoConnection(input.email)
-    if (!connection)
+    const email = outcome.email ?? input.email
+    const connectionIds = outcome.connectionIds ?? []
+    const connectionId =
+      connectionIds.length === 1
+        ? connectionIds[0]
+        : (await input.provider.resolveSsoConnection(email))?.connectionId
+    if (!connectionId)
       return { outcome: { status: 'blocked' as const }, returnTo }
     return {
       outcome: { status: 'sso-required' as const },
       flow: await input.flow.seal({
         kind: 'sso',
-        connectionId: connection.connectionId,
-        email: input.email,
+        connectionId,
+        ...(email ? { email } : {}),
         returnTo,
         expiresAt,
       }),

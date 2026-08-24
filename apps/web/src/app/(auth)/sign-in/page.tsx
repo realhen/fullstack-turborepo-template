@@ -16,8 +16,21 @@ export default async function SignInPage({
   const query = await searchParams
   const returnTo = safeReturnPath(query.returnTo)
   const config = getWebAuthConfig()
+  const queryError =
+    query.error === 'flow_expired' || query.error === 'oauth_failed'
+      ? 'This sign-in attempt expired or could not be completed. Please try again.'
+      : undefined
   return (
     <AuthCard title="Sign in">
+      {queryError ? (
+        <p
+          aria-live="polite"
+          className="mt-4 text-sm text-red-400"
+          role="alert"
+        >
+          {queryError}
+        </p>
+      ) : null}
       <AuthForm action={signInAction}>
         <input name="returnTo" type="hidden" value={returnTo} />
         <AuthField

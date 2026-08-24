@@ -134,7 +134,11 @@ export type AuthenticationOutcome =
       pendingAuthenticationToken: string
       organizations: readonly OrganizationChoice[]
     }
-  | { status: 'sso-required' }
+  | {
+      status: 'sso-required'
+      email?: string
+      connectionIds?: readonly string[]
+    }
   | { status: 'blocked' }
 export interface AuthenticationProvider {
   signUp(input: PasswordSignUpInput): Promise<AuthenticationOutcome>

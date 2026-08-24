@@ -28,6 +28,16 @@ export function safeLogoutReturn(value: unknown): string {
   return value
 }
 
+export function workosLogoutReturnUrl(
+  config: Extract<WebAuthConfig, { mode: 'workos' }>,
+  value: unknown,
+): string {
+  const redirectUri = new URL(config.redirectUri)
+  if (redirectUri.protocol !== 'https:')
+    throw new Error('WorkOS logout requires an HTTPS application origin')
+  return new URL(safeLogoutReturn(value), redirectUri.origin).toString()
+}
+
 function isSecureProviderUrl(value: string): boolean {
   try {
     return new URL(value).protocol === 'https:'
@@ -44,7 +54,7 @@ export async function logoutDestination(
     const session = await (input.provider ??
       getAuthenticationProvider(input.config))!.loadSession(input.sealedSession)
     const destination = await session.logoutUrl(
-      safeLogoutReturn(input.returnTo),
+      workosLogoutReturnUrl(input.config, input.returnTo),
     )
     return isSecureProviderUrl(destination) ? destination : '/'
   } catch {

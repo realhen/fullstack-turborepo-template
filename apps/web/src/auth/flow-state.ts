@@ -60,7 +60,7 @@ export type AuthFlowState =
   | {
       kind: 'sso'
       connectionId: string
-      email: string
+      email?: string
       returnTo: string
       expiresAt: number
     }
@@ -148,7 +148,7 @@ const stateSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('sso'),
     connectionId: z.string().min(1),
-    email: z.string().email(),
+    email: z.string().email().optional(),
     returnTo: z.string().min(1),
     expiresAt,
   }),

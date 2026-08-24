@@ -1,11 +1,7 @@
 import { cookies } from 'next/headers'
 import { getWebAuthConfig, type WebAuthConfig } from './config'
 import type { AuthenticationProvider } from './provider'
-import {
-  authenticateWebSession,
-  clearSessionCookie,
-  writeSessionCookie,
-} from './session'
+import { getAuthenticationProvider } from './session'
 
 export type CurrentUserDisplay = {
   email: string
@@ -27,26 +23,20 @@ export async function getCurrentUser(
   const sealedSession =
     input.sealedSession ??
     (await cookies()).get(config.sessionCookieName)?.value
-  const result = await authenticateWebSession({
-    config,
-    ...(sealedSession ? { sealedSession } : {}),
-    ...(input.provider
-      ? { provider: input.provider as AuthenticationProvider }
-      : {}),
-  })
-
-  if (!result.authenticated) {
-    if (result.clearCookie && input.sealedSession === undefined)
-      await clearSessionCookie()
+  if (!sealedSession) return null
+  let user
+  try {
+    const session = await (input.provider ??
+      getAuthenticationProvider(config))!.loadSession(sealedSession)
+    const authenticated = await session.authenticate()
+    if (!authenticated.authenticated || !authenticated.user) return null
+    user = authenticated.user
+  } catch {
     return null
   }
 
-  if (result.replacementCookie && input.sealedSession === undefined)
-    await writeSessionCookie(result.replacementCookie)
-
-  const firstName = result.user.firstName?.trim()
-  const lastName = result.user.lastName?.trim()
-  const name =
-    [firstName, lastName].filter(Boolean).join(' ') || result.user.email
-  return { email: result.user.email, name }
+  const firstName = user.firstName?.trim()
+  const lastName = user.lastName?.trim()
+  const name = [firstName, lastName].filter(Boolean).join(' ') || user.email
+  return { email: user.email, name }
 }

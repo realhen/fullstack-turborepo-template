@@ -32,7 +32,9 @@ describe('logoutDestination', () => {
         sealedSession: 'sealed',
         returnTo: '/signed-out',
       }),
-    ).resolves.toBe('https://auth.test/logout?returnTo=%2Fsigned-out')
+    ).resolves.toBe(
+      'https://auth.test/logout?returnTo=https%3A%2F%2Fapp.test%2Fsigned-out',
+    )
   })
 
   it('falls back locally for local mode, missing sessions, and invalid sessions', async () => {
@@ -75,7 +77,7 @@ describe('logoutDestination', () => {
       returnTo: 'https://evil.test',
     })
 
-    expect(requestedReturnTo).toBe('/')
+    expect(requestedReturnTo).toBe('https://app.test/')
   })
 })
 

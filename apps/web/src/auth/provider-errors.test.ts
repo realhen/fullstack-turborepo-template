@@ -99,6 +99,23 @@ describe('provider errors', () => {
       factors: [{ id: 'factor', type: 'totp' }],
     })
   })
+  it('retains trusted SSO email and exactly returned connection IDs internally', () => {
+    const error = new AuthenticationException(
+      401,
+      {
+        code: 'sso_required',
+        user: { id: 'user', email: 'sso@example.com' },
+        connection_ids: ['conn_1'],
+      } as never,
+      'req',
+    )
+
+    expect(transitionFromError(error)).toEqual({
+      status: 'sso-required',
+      email: 'sso@example.com',
+      connectionIds: ['conn_1'],
+    })
+  })
   it('keeps ordinary credential failures generic', () => {
     expect(publicAuthError(new Error('invalid password'))).toEqual({
       code: 'invalid_credentials',

@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/require-await */
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { getCurrentUser } from './current-user'
 
 const config = {
@@ -60,5 +60,22 @@ describe('getCurrentUser', () => {
         sealedSession: 'expired',
       }),
     ).resolves.toBeNull()
+  })
+
+  it('does not refresh or mutate session state while rendering', async () => {
+    const refresh = vi.fn()
+    await getCurrentUser({
+      config,
+      provider: {
+        loadSession: async () => ({
+          authenticate: async () => ({ authenticated: false }),
+          refresh,
+          logoutUrl: async () => 'https://auth.test/logout',
+        }),
+      },
+      sealedSession: 'sealed',
+    })
+
+    expect(refresh).not.toHaveBeenCalled()
   })
 })

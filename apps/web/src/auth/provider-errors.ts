@@ -15,6 +15,12 @@ const factors = z.array(z.unknown()).transform((value) =>
     return parsed.success ? [parsed.data] : []
   }),
 )
+const ssoData = z.object({
+  user: z.object({ email: z.string().email() }).optional(),
+  email: z.string().email().optional(),
+  connection_ids: z.array(z.string().min(1)).optional(),
+  connectionIds: z.array(z.string().min(1)).optional(),
+})
 
 export function transitionFromError(
   error: unknown,
@@ -70,7 +76,17 @@ export function transitionFromError(
       pendingAuthenticationToken: token,
       organizations: rawData.organizations ?? [],
     }
-  if (error.code === 'sso_required') return { status: 'sso-required' }
+  if (error.code === 'sso_required') {
+    const data = ssoData.safeParse(rawData)
+    if (!data.success) return { status: 'sso-required' }
+    const connectionIds = data.data.connection_ids ?? data.data.connectionIds
+    const email = data.data.user?.email ?? data.data.email
+    return {
+      status: 'sso-required',
+      ...(email ? { email } : {}),
+      ...(connectionIds ? { connectionIds } : {}),
+    }
+  }
   return undefined
 }
 export function publicAuthError(error: unknown): PublicAuthError {
