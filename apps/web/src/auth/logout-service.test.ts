@@ -50,13 +50,26 @@ describe('logoutDestination', () => {
   })
 
   it('refreshes an expired sealed session before obtaining its logout URL', async () => {
+    let refreshedSession = false
     const refresh = vi.fn().mockResolvedValue({
       authenticated: true,
       sealedSession: 'refreshed',
       accessToken: 'access',
       user: { id: 'user', email: 'user@example.com' },
     })
-    const logoutUrl = vi.fn().mockResolvedValue('https://auth.test/logout')
+    refresh.mockImplementation(async () => {
+      refreshedSession = true
+      return {
+        authenticated: true,
+        sealedSession: 'refreshed',
+        accessToken: 'access',
+        user: { id: 'user', email: 'user@example.com' },
+      }
+    })
+    const logoutUrl = vi.fn(async () => {
+      if (!refreshedSession) throw new Error('expired session')
+      return 'https://auth.test/logout'
+    })
     await expect(
       logoutDestination({
         config,

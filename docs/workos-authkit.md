@@ -21,8 +21,8 @@ Keep configuration in the environment that owns the trust boundary:
 | `WORKOS_CLIENT_ID`             | Vercel server environment                          | WorkOS project/client selected by the server.                                                                          |
 | `WORKOS_COOKIE_PASSWORD`       | Vercel server environment only                     | Generate with `openssl rand -base64 48`; at least 32 high-entropy characters, never placeholders or repeated material. |
 | `WORKOS_REDIRECT_URI`          | Vercel server environment                          | The registered callback URL, normally `https://app.example.com/auth/callback`.                                         |
-| `WORKOS_SESSION_COOKIE_NAME`   | Vercel server environment                          | Optional sealed session cookie name; defaults to `saas_session`; must differ from the flow name.                       |
-| `WORKOS_FLOW_COOKIE_NAME`      | Vercel server environment                          | Optional encrypted pending-flow cookie name; defaults to `saas_auth_flow`; must differ from session.                   |
+| `WORKOS_SESSION_COOKIE_NAME`   | Vercel server environment                          | Optional legal HTTP cookie name; defaults to `saas_session`; must differ from the flow name.                           |
+| `WORKOS_FLOW_COOKIE_NAME`      | Vercel server environment                          | Optional legal HTTP cookie name; defaults to `saas_auth_flow`; must differ from session.                               |
 | `WORKOS_SOCIAL_PROVIDERS`      | Vercel server environment                          | Comma-separated allow-list of `GoogleOAuth`, `MicrosoftOAuth`, `GitHubOAuth`, and `AppleOAuth`.                        |
 | `WORKOS_RADAR_MODE`            | Vercel server environment                          | `off`, `log`, or `enforce`; start with `off` or `log`.                                                                 |
 | `NEXT_PUBLIC_WORKOS_CLIENT_ID` | Vercel browser-visible environment, only for Radar | Required for `log`/`enforce` and must exactly equal `WORKOS_CLIENT_ID`; it is not a secret.                            |

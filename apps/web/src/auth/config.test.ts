@@ -123,6 +123,24 @@ describe('getWebAuthConfig', () => {
       WORKOS_SESSION_COOKIE_NAME: 'same',
       WORKOS_FLOW_COOKIE_NAME: 'same',
     },
+    {
+      NODE_ENV: 'production',
+      WEB_AUTH_MODE: 'workos',
+      WORKOS_API_KEY: 'sk',
+      WORKOS_CLIENT_ID: 'client',
+      WORKOS_COOKIE_PASSWORD: cookiePassword,
+      WORKOS_REDIRECT_URI: 'https://app.example.com/auth/callback',
+      WORKOS_SESSION_COOKIE_NAME: 'invalid;name',
+    },
+    {
+      NODE_ENV: 'production',
+      WEB_AUTH_MODE: 'workos',
+      WORKOS_API_KEY: 'sk',
+      WORKOS_CLIENT_ID: 'client',
+      WORKOS_COOKIE_PASSWORD: cookiePassword,
+      WORKOS_REDIRECT_URI: 'https://app.example.com/auth/callback',
+      WORKOS_FLOW_COOKIE_NAME: 'invalid name',
+    },
   ])('fails closed for unsafe configuration', (env) => {
     expect(() => getWebAuthConfig(env as NodeJS.ProcessEnv)).toThrow()
   })

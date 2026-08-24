@@ -25,6 +25,9 @@ const providers = z.enum([
 ])
 const mode = z.enum(['local', 'workos'])
 const radar = z.enum(['off', 'log', 'enforce'])
+const cookieName = z
+  .string()
+  .regex(/^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/, 'Invalid HTTP cookie name')
 const cookiePassword = z
   .string()
   .min(32)
@@ -81,8 +84,8 @@ export function getWebAuthConfig(
       clientId: z.string().min(1),
       cookiePassword,
       redirectUri: z.string().url(),
-      sessionCookieName: z.string().min(1).default('saas_session'),
-      flowCookieName: z.string().min(1).default('saas_auth_flow'),
+      sessionCookieName: cookieName.default('saas_session'),
+      flowCookieName: cookieName.default('saas_auth_flow'),
       radarMode: radar.default('off'),
     })
     .parse({
