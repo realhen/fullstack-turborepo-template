@@ -1,7 +1,7 @@
 # WorkOS AuthKit Custom Authentication Design
 
 **Date:** 2026-08-23  
-**Status:** Proposed for implementation  
+**Status:** Approved for implementation
 **Scope:** `apps/web`, the API's existing generic OIDC boundary, documentation, and tests
 
 ## Objective
