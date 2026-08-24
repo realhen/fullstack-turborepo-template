@@ -11,4 +11,24 @@ describe('flow state', () => {
     await expect(codec.unseal(value, 'mfa')).rejects.toThrow()
     await expect(createFlowStateCodec('x'.repeat(32), () => 2_001).unseal(value)).rejects.toThrow()
   })
+  it.each([
+    { kind: 'magic-auth', email: 'user@example.com', returnTo: '/app', expiresAt: 2_000 },
+    { kind: 'mfa', pendingAuthenticationToken: 'pending', returnTo: '/app', expiresAt: 2_000 },
+    { kind: 'radar-email', pendingAuthenticationToken: 'pending', challengeId: 'challenge', returnTo: '/app', expiresAt: 2_000 },
+    { kind: 'radar-sms', pendingAuthenticationToken: 'pending', challengeId: 'challenge', returnTo: '/app', expiresAt: 2_000 },
+    { kind: 'oauth', state: 'state', codeVerifier: 'verifier', returnTo: '/app', expiresAt: 2_000 },
+    { kind: 'password-reset', token: 'reset', expiresAt: 2_000 },
+  ])('round trips the $kind variant', async (state) => {
+    const codec = createFlowStateCodec('x'.repeat(32), () => 1_000)
+    await expect(codec.unseal(await codec.seal(state as any))).resolves.toEqual(state)
+  })
+
+  it('rejects a malformed decrypted variant payload', async () => {
+    const codec = createFlowStateCodec('x'.repeat(32), () => 1_000)
+    await expect(
+      codec.unseal(
+        await codec.seal({ kind: 'mfa', returnTo: '/app', expiresAt: 2_000 } as any),
+      ),
+    ).rejects.toThrow()
+  })
 })

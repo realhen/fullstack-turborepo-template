@@ -17,6 +17,9 @@ const radar = z.enum(['off', 'log', 'enforce'])
 export function getWebAuthConfig(env: NodeJS.ProcessEnv = process.env): WebAuthConfig {
   const production = env.NODE_ENV === 'production'
   const configuredMode = env.WEB_AUTH_MODE
+  if (!configuredMode && Object.keys(env).some((key) => key.startsWith('WORKOS_') && env[key])) {
+    throw new Error('WEB_AUTH_MODE must be set when WorkOS configuration is present')
+  }
   const selectedMode = configuredMode ? mode.parse(configuredMode) : production ? 'workos' : 'local'
   if (selectedMode === 'local') {
     if (production) throw new Error('WEB_AUTH_MODE=local is forbidden in production')

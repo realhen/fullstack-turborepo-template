@@ -10,6 +10,12 @@ describe('getWebAuthConfig', () => {
     expect(getWebAuthConfig({ NODE_ENV: 'production', WEB_AUTH_MODE: 'workos', WORKOS_API_KEY: 'sk_test', WORKOS_CLIENT_ID: 'client_01', WORKOS_COOKIE_PASSWORD: 'x'.repeat(32), WORKOS_REDIRECT_URI: 'https://app.example.com/auth/callback', WORKOS_SOCIAL_PROVIDERS: 'GoogleOAuth,GitHubOAuth', WORKOS_RADAR_MODE: 'log' })).toMatchObject({ mode: 'workos', socialProviders: ['GoogleOAuth', 'GitHubOAuth'], radarMode: 'log' })
   })
 
+  it('does not silently ignore partial WorkOS configuration when mode is unset', () => {
+    expect(() =>
+      getWebAuthConfig({ NODE_ENV: 'test', WORKOS_API_KEY: 'sk_test' }),
+    ).toThrow()
+  })
+
   it.each([
     { NODE_ENV: 'production', WEB_AUTH_MODE: 'local' },
     { NODE_ENV: 'production', WEB_AUTH_MODE: 'workos', WORKOS_API_KEY: 'sk' },
