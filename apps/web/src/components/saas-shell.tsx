@@ -3,6 +3,8 @@
 import Link from 'next/link'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import type { ChangeEvent, ReactNode } from 'react'
+import { logoutAction } from '@/auth/actions/logout'
+import type { CurrentUserDisplay } from '@/auth/current-user'
 import type { Workspace } from '@/lib/saas.types'
 
 const navigation = [
@@ -16,7 +18,12 @@ const navigation = [
 export function SaasShell({
   children,
   workspace,
-}: Readonly<{ children: ReactNode; workspace: Workspace }>) {
+  user,
+}: Readonly<{
+  children: ReactNode
+  user: CurrentUserDisplay | null
+  workspace: Workspace
+}>) {
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -103,6 +110,28 @@ export function SaasShell({
             <span className="hidden rounded-full bg-zinc-800 px-2 py-1 text-xs text-zinc-300 sm:inline">
               {organization?.role ?? 'member'}
             </span>
+            <div className="hidden text-right sm:block">
+              {user ? (
+                <>
+                  <p className="text-sm font-medium text-zinc-200">
+                    {user.name}
+                  </p>
+                  <p className="text-xs text-zinc-500">{user.email}</p>
+                </>
+              ) : (
+                <p className="text-sm font-medium text-zinc-400">
+                  Local template
+                </p>
+              )}
+            </div>
+            <form action={logoutAction} method="post">
+              <button
+                className="rounded-lg border border-zinc-700 px-3 py-2 text-sm text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
+                type="submit"
+              >
+                Sign out
+              </button>
+            </form>
           </div>
         </div>
       </header>
