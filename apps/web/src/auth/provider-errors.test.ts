@@ -77,6 +77,28 @@ describe('provider errors', () => {
     )
     expect(transitionFromError(error)).toMatchObject({ status })
   })
+  it('parses trusted TOTP factors from the untyped WorkOS error payload', () => {
+    const error = new AuthenticationException(
+      401,
+      {
+        code: 'mfa_challenge',
+        pending_authentication_token: 'pending',
+        authentication_factors: [
+          { id: 'factor', type: 'totp' },
+          { id: 'ignored', type: 'sms' },
+        ],
+      } as never,
+      'req',
+    )
+    expect(error.rawData.authentication_factors).toEqual([
+      { id: 'factor', type: 'totp' },
+      { id: 'ignored', type: 'sms' },
+    ])
+    expect(transitionFromError(error)).toMatchObject({
+      status: 'mfa-required',
+      factors: [{ id: 'factor', type: 'totp' }],
+    })
+  })
   it('keeps ordinary credential failures generic', () => {
     expect(publicAuthError(new Error('invalid password'))).toEqual({
       code: 'invalid_credentials',

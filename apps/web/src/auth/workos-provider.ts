@@ -23,6 +23,7 @@ export type WorkosClient = Pick<WorkOS, 'multiFactorAuth' | 'sso'> & {
     | 'authenticateWithCode'
     | 'authenticateWithEmailVerification'
     | 'authenticateWithMagicAuth'
+    | 'authenticateWithOrganizationSelection'
     | 'authenticateWithPassword'
     | 'authenticateWithRadarEmailChallenge'
     | 'authenticateWithRadarSmsChallenge'
@@ -192,6 +193,14 @@ export class WorkosAuthenticationProvider implements AuthenticationProvider {
       uri: result.authenticationFactor.totp.uri,
     }
   }
+  async startTotpChallenge(
+    input: Parameters<AuthenticationProvider['startTotpChallenge']>[0],
+  ) {
+    const challenge = await this.client.multiFactorAuth.challengeFactor({
+      authenticationFactorId: input.factorId,
+    })
+    return { challengeId: challenge.id }
+  }
   async authenticateTotp(
     input: Parameters<AuthenticationProvider['authenticateTotp']>[0],
   ) {
@@ -242,11 +251,16 @@ export class WorkosAuthenticationProvider implements AuthenticationProvider {
         }),
       )
     }
+    if (!input.challengeId)
+      throw new Error(
+        'WorkOS Radar email completion requires server flow context',
+      )
+    const challengeId = input.challengeId
     return this.transition(() =>
       this.client.userManagement.authenticateWithRadarEmailChallenge({
         code: input.code,
         pendingAuthenticationToken: input.pendingAuthenticationToken,
-        radarChallengeId: input.challengeId,
+        radarChallengeId: challengeId,
         session: {
           cookiePassword: this.config.cookiePassword,
           sealSession: true,
@@ -278,6 +292,23 @@ export class WorkosAuthenticationProvider implements AuthenticationProvider {
         clientId: this.config.clientId,
         code: input.code,
         codeVerifier: input.codeVerifier,
+        session: {
+          cookiePassword: this.config.cookiePassword,
+          sealSession: true,
+        },
+      }),
+    )
+  }
+  async authenticateWithOrganizationSelection(
+    input: Parameters<
+      AuthenticationProvider['authenticateWithOrganizationSelection']
+    >[0],
+  ) {
+    return this.transition(() =>
+      this.client.userManagement.authenticateWithOrganizationSelection({
+        ...context(input),
+        organizationId: input.organizationId,
+        pendingAuthenticationToken: input.pendingAuthenticationToken,
         session: {
           cookiePassword: this.config.cookiePassword,
           sealSession: true,

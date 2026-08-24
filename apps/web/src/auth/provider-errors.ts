@@ -1,4 +1,5 @@
 import { AuthenticationException } from '@workos-inc/node'
+import { z } from 'zod'
 import type { AuthenticationOutcome } from './provider'
 
 export type PublicAuthError = {
@@ -7,6 +8,13 @@ export type PublicAuthError = {
   fields?: Record<string, string>
   cause?: string
 }
+const factor = z.object({ id: z.string().min(1), type: z.literal('totp') })
+const factors = z.array(z.unknown()).transform((value) =>
+  value.flatMap((item) => {
+    const parsed = factor.safeParse(item)
+    return parsed.success ? [parsed.data] : []
+  }),
+)
 
 export function transitionFromError(
   error: unknown,
@@ -33,23 +41,27 @@ export function transitionFromError(
     return {
       status: 'mfa-required',
       pendingAuthenticationToken: token,
-      factors: [],
+      factors: factors.safeParse(rawData.authentication_factors).data ?? [],
     }
-  if (
-    (error.code === 'radar_email_challenge' ||
-      error.code === 'radar_sms_challenge') &&
-    token &&
-    error.radarChallengeId
-  )
+  if (error.code === 'radar_email_challenge' && token && error.radarChallengeId)
     return {
       status: 'radar-challenge',
       pendingAuthenticationToken: token,
       challenge: {
-        type: error.code === 'radar_sms_challenge' ? 'sms' : 'email',
+        type: 'email',
         challengeId: error.radarChallengeId,
         ...(rawData.user
           ? { user: { id: rawData.user.id, email: rawData.user.email } }
           : {}),
+      },
+    }
+  if (error.code === 'radar_sms_challenge' && token && rawData.user)
+    return {
+      status: 'radar-challenge',
+      pendingAuthenticationToken: token,
+      challenge: {
+        type: 'sms',
+        user: { id: rawData.user.id, email: rawData.user.email },
       },
     }
   if (error.code === 'organization_selection_required' && token)
@@ -58,11 +70,7 @@ export function transitionFromError(
       pendingAuthenticationToken: token,
       organizations: rawData.organizations ?? [],
     }
-  if (error.code === 'sso_required')
-    return {
-      status: 'sso-required',
-      connectionIds: rawData.connection_ids ?? [],
-    }
+  if (error.code === 'sso_required') return { status: 'sso-required' }
   return undefined
 }
 export function publicAuthError(error: unknown): PublicAuthError {

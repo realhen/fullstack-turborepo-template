@@ -51,21 +51,34 @@ export async function passwordAuthentication(input: {
       flow: await input.flow.seal({
         kind: 'mfa',
         pendingAuthenticationToken: outcome.pendingAuthenticationToken,
+        factors: outcome.factors,
         returnTo,
         expiresAt,
       }),
     }
-  if (outcome.status === 'radar-challenge')
+  if (outcome.status === 'radar-challenge') {
+    if (outcome.challenge.type === 'sms')
+      return {
+        outcome,
+        flow: await input.flow.seal({
+          kind: 'radar-sms',
+          pendingAuthenticationToken: outcome.pendingAuthenticationToken,
+          userId: outcome.challenge.user.id,
+          returnTo,
+          expiresAt,
+        }),
+      }
     return {
       outcome,
       flow: await input.flow.seal({
-        kind: outcome.challenge.type === 'email' ? 'radar-email' : 'radar-sms',
+        kind: 'radar-email',
         pendingAuthenticationToken: outcome.pendingAuthenticationToken,
         challengeId: outcome.challenge.challengeId,
         returnTo,
         expiresAt,
       }),
     }
+  }
   if (outcome.status === 'organization-selection-required')
     return {
       outcome,
@@ -77,6 +90,21 @@ export async function passwordAuthentication(input: {
         expiresAt,
       }),
     }
+  if (outcome.status === 'sso-required') {
+    const connection = await input.provider.resolveSsoConnection(input.email)
+    if (!connection)
+      return { outcome: { status: 'blocked' as const }, returnTo }
+    return {
+      outcome: { status: 'sso-required' as const },
+      flow: await input.flow.seal({
+        kind: 'sso',
+        connectionId: connection.connectionId,
+        email: input.email,
+        returnTo,
+        expiresAt,
+      }),
+    }
+  }
   return { outcome, returnTo }
 }
 export async function verifyPasswordEmail(input: {

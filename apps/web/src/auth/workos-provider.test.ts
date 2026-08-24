@@ -96,4 +96,35 @@ describe('WorkOS adapter', () => {
       }),
     )
   })
+  it('starts a TOTP challenge from a trusted factor ID', async () => {
+    const challengeFactor = vi.fn().mockResolvedValue({ id: 'challenge' })
+    const provider = new WorkosAuthenticationProvider(config, {
+      multiFactorAuth: { challengeFactor },
+    } as unknown as WorkosClient)
+    await expect(
+      provider.startTotpChallenge({ factorId: 'factor' }),
+    ).resolves.toEqual({ challengeId: 'challenge' })
+    expect(challengeFactor).toHaveBeenCalledWith({
+      authenticationFactorId: 'factor',
+    })
+  })
+  it('passes a server-validated organization selection with sealed-session options', async () => {
+    const authenticateWithOrganizationSelection = vi
+      .fn()
+      .mockResolvedValue(response)
+    const provider = new WorkosAuthenticationProvider(config, {
+      userManagement: { authenticateWithOrganizationSelection },
+    } as unknown as WorkosClient)
+    await provider.authenticateWithOrganizationSelection({
+      organizationId: 'org',
+      pendingAuthenticationToken: 'pending',
+    })
+    expect(authenticateWithOrganizationSelection).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: 'org',
+        pendingAuthenticationToken: 'pending',
+        session: { cookiePassword: config.cookiePassword, sealSession: true },
+      }),
+    )
+  })
 })

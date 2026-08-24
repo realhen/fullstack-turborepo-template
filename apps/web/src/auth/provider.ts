@@ -18,11 +18,9 @@ export interface OrganizationChoice {
   id: string
   name: string
 }
-export interface RadarChallenge {
-  type: 'email' | 'sms'
-  challengeId: string
-  user?: TransitionUser
-}
+export type RadarChallenge =
+  | { type: 'email'; challengeId: string; user?: TransitionUser }
+  | { type: 'sms'; user: TransitionUser }
 export type AuthInput = AuthRequestContext & { signalsId?: string }
 export type PasswordSignUpInput = AuthInput & {
   email: string
@@ -59,6 +57,7 @@ export type TotpChallengeInput = AuthInput & {
   code: string
   challengeId: string
 }
+export type TotpStartInput = { factorId: string }
 export type RadarChallengeStartInput = AuthInput & {
   userId: string
   pendingAuthenticationToken: string
@@ -70,9 +69,9 @@ export type RadarChallengeStartResult = {
 }
 export type RadarChallengeCompleteInput = AuthInput & {
   pendingAuthenticationToken: string
-  challengeId: string
   code: string
   type: 'email' | 'sms'
+  challengeId?: string
   verificationId?: string
   phoneNumber?: string
 }
@@ -85,6 +84,10 @@ export type AuthorizationUrlInput = AuthInput & {
 export type AuthorizationCodeInput = AuthInput & {
   code: string
   codeVerifier: string
+}
+export type OrganizationSelectionInput = AuthInput & {
+  pendingAuthenticationToken: string
+  organizationId: string
 }
 export interface ProviderSession {
   authenticate(): Promise<{
@@ -131,7 +134,7 @@ export type AuthenticationOutcome =
       pendingAuthenticationToken: string
       organizations: readonly OrganizationChoice[]
     }
-  | { status: 'sso-required'; connectionIds: readonly string[] }
+  | { status: 'sso-required' }
   | { status: 'blocked' }
 export interface AuthenticationProvider {
   signUp(input: PasswordSignUpInput): Promise<AuthenticationOutcome>
@@ -146,12 +149,16 @@ export interface AuthenticationProvider {
   startPasswordReset(input: PasswordResetStartInput): Promise<void>
   resetPassword(input: PasswordResetCompleteInput): Promise<void>
   enrollTotp(input: TotpEnrollmentInput): Promise<TotpEnrollmentResult>
+  startTotpChallenge(input: TotpStartInput): Promise<{ challengeId: string }>
   authenticateTotp(input: TotpChallengeInput): Promise<AuthenticationOutcome>
   startRadarChallenge(
     input: RadarChallengeStartInput,
   ): Promise<RadarChallengeStartResult>
   completeRadarChallenge(
     input: RadarChallengeCompleteInput,
+  ): Promise<AuthenticationOutcome>
+  authenticateWithOrganizationSelection(
+    input: OrganizationSelectionInput,
   ): Promise<AuthenticationOutcome>
   authorizationUrl(input: AuthorizationUrlInput): Promise<string>
   exchangeAuthorizationCode(

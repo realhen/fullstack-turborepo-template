@@ -31,6 +31,14 @@ describe('flow state', () => {
     {
       kind: 'mfa',
       pendingAuthenticationToken: 'pending',
+      factors: [{ id: 'factor', type: 'totp' }],
+      returnTo: '/app',
+      expiresAt: 2_000,
+    },
+    {
+      kind: 'sso',
+      connectionId: 'conn',
+      email: 'user@example.com',
       returnTo: '/app',
       expiresAt: 2_000,
     },
@@ -59,7 +67,7 @@ describe('flow state', () => {
     {
       kind: 'radar-sms',
       pendingAuthenticationToken: 'pending',
-      challengeId: 'challenge',
+      userId: 'user',
       returnTo: '/app',
       expiresAt: 2_000,
     },

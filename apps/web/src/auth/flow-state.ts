@@ -19,6 +19,7 @@ export type AuthFlowState =
       kind: 'mfa'
       pendingAuthenticationToken: string
       challengeId?: string
+      factors: readonly { id: string; type: 'totp' }[]
       returnTo: string
       expiresAt: number
     }
@@ -38,9 +39,23 @@ export type AuthFlowState =
       expiresAt: number
     }
   | {
-      kind: 'radar-email' | 'radar-sms'
+      kind: 'radar-email'
       pendingAuthenticationToken: string
       challengeId: string
+      returnTo: string
+      expiresAt: number
+    }
+  | {
+      kind: 'radar-sms'
+      pendingAuthenticationToken: string
+      userId: string
+      returnTo: string
+      expiresAt: number
+    }
+  | {
+      kind: 'sso'
+      connectionId: string
+      email: string
       returnTo: string
       expiresAt: number
     }
@@ -79,6 +94,9 @@ const stateSchema = z.discriminatedUnion('kind', [
     kind: z.literal('mfa'),
     pendingAuthenticationToken: z.string().min(1),
     challengeId: z.string().min(1).optional(),
+    factors: z.array(
+      z.object({ id: z.string().min(1), type: z.literal('totp') }),
+    ),
     returnTo: z.string().min(1),
     expiresAt,
   }),
@@ -109,7 +127,14 @@ const stateSchema = z.discriminatedUnion('kind', [
   z.object({
     kind: z.literal('radar-sms'),
     pendingAuthenticationToken: z.string().min(1),
-    challengeId: z.string().min(1),
+    userId: z.string().min(1),
+    returnTo: z.string().min(1),
+    expiresAt,
+  }),
+  z.object({
+    kind: z.literal('sso'),
+    connectionId: z.string().min(1),
+    email: z.string().email(),
     returnTo: z.string().min(1),
     expiresAt,
   }),
