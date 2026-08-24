@@ -4,10 +4,17 @@ import { AuthForm } from '@/components/auth/auth-form'
 import { AuthField } from '@/components/auth/auth-field'
 import { AuthSubmit } from '@/components/auth/auth-submit'
 import { signUpAction } from '@/auth/actions/password'
-export default function SignUpPage() {
+import { safeReturnPath } from '@/auth/return-path'
+export default async function SignUpPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ returnTo?: string }>
+}) {
+  const returnTo = safeReturnPath((await searchParams).returnTo)
   return (
     <AuthCard title="Create your account">
       <AuthForm action={signUpAction}>
+        <input name="returnTo" type="hidden" value={returnTo} />
         <AuthField
           autoComplete="email"
           label="Email"
@@ -25,7 +32,9 @@ export default function SignUpPage() {
         <AuthSubmit>Create account</AuthSubmit>
       </AuthForm>
       <p className="mt-4 text-sm">
-        <Link href="/sign-in">Already have an account? Sign in</Link>
+        <Link href={`/sign-in?returnTo=${encodeURIComponent(returnTo)}`}>
+          Already have an account? Sign in
+        </Link>
       </p>
     </AuthCard>
   )

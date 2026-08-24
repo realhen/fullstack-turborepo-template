@@ -6,12 +6,15 @@ import {
   completeMagicAuthAction,
   startMagicAuthAction,
 } from '@/auth/actions/recovery'
+import { safeReturnPath } from '@/auth/return-path'
 export default async function MagicAuthPage({
   searchParams,
 }: {
-  searchParams: Promise<{ code?: string }>
+  searchParams: Promise<{ code?: string; returnTo?: string }>
 }) {
-  const code = (await searchParams).code
+  const query = await searchParams
+  const code = query.code
+  const returnTo = safeReturnPath(query.returnTo)
   return (
     <AuthCard title="Sign in with an email code">
       {code ? (
@@ -26,12 +29,14 @@ export default async function MagicAuthPage({
             <AuthSubmit>Sign in</AuthSubmit>
           </AuthForm>
           <AuthForm action={startMagicAuthAction}>
+            <input name="returnTo" type="hidden" value={returnTo} />
             <AuthField label="Email" name="email" type="email" required />
             <AuthSubmit>Send another code</AuthSubmit>
           </AuthForm>
         </>
       ) : (
         <AuthForm action={startMagicAuthAction}>
+          <input name="returnTo" type="hidden" value={returnTo} />
           <AuthField label="Email" name="email" type="email" required />
           <AuthSubmit>Send code</AuthSubmit>
         </AuthForm>

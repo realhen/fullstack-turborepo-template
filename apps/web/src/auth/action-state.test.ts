@@ -9,4 +9,12 @@ describe('action state', () => {
       code: 'service_unavailable',
     })
   })
+  it('maps verification mistakes without exposing provider details', () => {
+    expect(
+      actionStateFromError(new Error('invalid verification code')),
+    ).toEqual({
+      code: 'invalid_code',
+      message: 'Unable to verify that code. Try again.',
+    })
+  })
 })

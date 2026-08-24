@@ -2,6 +2,7 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { AuthCard } from '@/components/auth/auth-card'
 import { AuthField } from '@/components/auth/auth-field'
+import { AuthForm } from '@/components/auth/auth-form'
 import { AuthSubmit } from '@/components/auth/auth-submit'
 import {
   completeRadarChallengeAction,
@@ -32,18 +33,18 @@ export default async function ChallengePage() {
             </p>
             <code className="mt-2 block break-all text-sm">{flow.secret}</code>
             <code className="mt-2 block break-all text-sm">{flow.uri}</code>
-            <form action={completeTotpChallengeAction}>
+            <AuthForm action={completeTotpChallengeAction}>
               <AuthField label="Authenticator code" name="code" required />
               <AuthSubmit>Verify code</AuthSubmit>
-            </form>
+            </AuthForm>
           </>
         ) : (
-          <form action={startTotpEnrollmentAction}>
+          <AuthForm action={startTotpEnrollmentAction}>
             <p className="mt-4 text-sm">
               Set up an authenticator app to continue.
             </p>
             <AuthSubmit>Set up authenticator</AuthSubmit>
-          </form>
+          </AuthForm>
         )}
       </AuthCard>
     )
@@ -52,12 +53,12 @@ export default async function ChallengePage() {
     return (
       <AuthCard title="Authenticator verification">
         {flow.challengeId ? (
-          <form action={completeTotpChallengeAction}>
+          <AuthForm action={completeTotpChallengeAction}>
             <AuthField label="Authenticator code" name="code" required />
             <AuthSubmit>Verify code</AuthSubmit>
-          </form>
+          </AuthForm>
         ) : (
-          <form action={startTotpChallengeAction}>
+          <AuthForm action={startTotpChallengeAction}>
             <label className="mt-4 block text-sm" htmlFor="factorId">
               Authenticator
             </label>
@@ -73,7 +74,7 @@ export default async function ChallengePage() {
               ))}
             </select>
             <AuthSubmit>Continue</AuthSubmit>
-          </form>
+          </AuthForm>
         )}
       </AuthCard>
     )
@@ -81,7 +82,7 @@ export default async function ChallengePage() {
   if (flow.kind === 'organization-selection')
     return (
       <AuthCard title="Choose your organization">
-        <form action={selectOrganizationAction}>
+        <AuthForm action={selectOrganizationAction}>
           <label className="mt-4 block text-sm" htmlFor="organizationId">
             Organization
           </label>
@@ -97,7 +98,7 @@ export default async function ChallengePage() {
             ))}
           </select>
           <AuthSubmit>Continue</AuthSubmit>
-        </form>
+        </AuthForm>
       </AuthCard>
     )
 
@@ -105,7 +106,7 @@ export default async function ChallengePage() {
     return (
       <AuthCard title="Confirm your phone number">
         {flow.verificationId ? (
-          <form action={completeRadarChallengeAction}>
+          <AuthForm action={completeRadarChallengeAction}>
             <AuthField
               autoComplete="one-time-code"
               label="SMS code"
@@ -113,9 +114,9 @@ export default async function ChallengePage() {
               required
             />
             <AuthSubmit>Verify code</AuthSubmit>
-          </form>
+          </AuthForm>
         ) : (
-          <form action={startRadarSmsChallengeAction}>
+          <AuthForm action={startRadarSmsChallengeAction}>
             <AuthField
               autoComplete="tel"
               label="Mobile number"
@@ -125,7 +126,7 @@ export default async function ChallengePage() {
               type="tel"
             />
             <AuthSubmit>Send code</AuthSubmit>
-          </form>
+          </AuthForm>
         )}
       </AuthCard>
     )
@@ -133,7 +134,7 @@ export default async function ChallengePage() {
   if (flow.kind === 'radar-email')
     return (
       <AuthCard title="Confirm your email">
-        <form action={completeRadarChallengeAction}>
+        <AuthForm action={completeRadarChallengeAction}>
           <AuthField
             autoComplete="one-time-code"
             label="Email code"
@@ -141,7 +142,7 @@ export default async function ChallengePage() {
             required
           />
           <AuthSubmit>Verify code</AuthSubmit>
-        </form>
+        </AuthForm>
       </AuthCard>
     )
 
