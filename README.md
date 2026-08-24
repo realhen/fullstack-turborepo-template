@@ -101,7 +101,9 @@ pnpm dev:containers    # production-like local stack
 
 The backend accepts any standards-compliant OIDC issuer, so Supabase, WorkOS,
 Auth0, Cognito, and similar providers can be swapped without changing business
-services. Configure:
+services. For the production WorkOS AuthKit setup and custom web UI, see the
+[WorkOS AuthKit setup guide](docs/workos-authkit.md). Configure the API's
+provider-neutral boundary with:
 
 ```dotenv
 AUTH_MODE=oidc
@@ -117,11 +119,11 @@ provisioned only when the configured issuer asserts a verified email; unverified
 or missing emails fail closed. Provider scopes never substitute for application
 roles.
 
-The frontend reads an access token from a configurable Secure, HttpOnly session
-cookie (`AUTH_ACCESS_TOKEN_COOKIE`) and forwards it server-to-server. A fixed
-`API_AUTH_TOKEN` exists only for local automation. The provider-specific login
-and callback UI is deliberately a small adapter boundary: configure the chosen
-provider to set that cookie rather than coupling the template to one vendor.
+In WorkOS mode, the frontend keeps the sealed session in a Secure, HttpOnly
+cookie (`WORKOS_SESSION_COOKIE_NAME`, default `saas_session`) and forwards only
+the current short-lived access token server-to-server. A fixed `API_AUTH_TOKEN`
+exists only for local automation. The WorkOS API key, refresh token, and cookie
+password remain server-only; the API has no WorkOS SDK or API key.
 
 Authorization is enforced in the API through organization permissions and
 project roles. Default roles are owner, admin, member, and viewer. PostgreSQL RLS
