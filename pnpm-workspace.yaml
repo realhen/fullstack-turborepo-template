@@ -3,55 +3,55 @@ packages:
   - 'packages/*'
 
 catalog:
-  '@eslint/js': ^9.39.5
-  '@nestjs/cli': ^11.0.24
-  '@nestjs/common': ^11.2.1
-  '@nestjs/config': ^4.0.4
-  '@nestjs/core': ^11.2.1
-  '@nestjs/platform-express': ^11.2.1
-  '@nestjs/schematics': ^11.1.0
-  '@nestjs/swagger': ^11.4.7
-  '@nestjs/testing': ^11.2.1
+  '@eslint/js': ^10.0.1
+  '@nestjs/cli': ^12.0.0
+  '@nestjs/common': ^12.0.1
+  '@nestjs/config': ^12.0.0
+  '@nestjs/core': ^12.0.1
+  '@nestjs/platform-express': ^12.0.1
+  '@nestjs/schematics': ^12.0.0
+  '@nestjs/swagger': ^12.0.1
+  '@nestjs/testing': ^12.0.1
   '@nestjs/throttler': ^6.5.0
   '@tailwindcss/postcss': ^4.3.3
   '@types/compression': ^1.8.1
   '@types/express': ^5.0.6
-  '@types/node': ^26.2.0
+  '@types/node': ^26.4.1
   '@types/pg': ^8.23.1
   '@types/react': ^19.2.18
-  '@types/react-dom': ^19.2.4
+  '@types/react-dom': ^19.2.5
   '@types/supertest': ^7.2.1
-  'aws-cdk': ^2.1138.0
-  'aws-cdk-lib': ^2.266.0
+  'aws-cdk': ^2.1139.0
+  'aws-cdk-lib': ^2.267.0
   'class-transformer': ^0.5.1
   'class-validator': ^0.15.1
   'compression': ^1.8.1
   'constructs': ^10.8.1
   'drizzle-orm': ^0.45.2
-  'eslint': ^9.39.5
-  'eslint-config-next': ^16.3.2
-  'globals': ^17.11.0
+  'eslint': ^10.9.1
+  'eslint-config-next': ^16.3.4
+  'globals': ^17.12.0
   'helmet': ^8.3.0
-  'jose': ^6.2.3
-  'next': ^16.3.2
+  'jose': ^6.2.10
+  'next': ^16.3.4
   'openapi-fetch': ^0.17.0
   'openapi-typescript': ^7.13.0
   'pg': ^8.23.0
-  'posthog-js': ^1.409.0
+  'posthog-js': ^1.424.1
   'prettier': ^3.9.6
   'react': ^19.2.8
   'react-dom': ^19.2.8
   'reflect-metadata': ^0.2.2
   'rxjs': ^7.8.2
-  'stripe': ^22.5.0
+  'stripe': ^22.6.1
   'supertest': ^7.2.2
   'tailwindcss': ^4.3.3
-  'tsx': ^4.23.12
-  'turbo': ^2.10.11
+  'tsx': ^4.23.13
+  'turbo': ^2.10.12
   'typescript': ^6.0.3
-  'typescript-eslint': ^8.67.0
+  'typescript-eslint': ^8.69.0
   'vitest': ^4.1.11
-  'zod': ^4.4.3
+  'zod': ^4.5.4
 
 injectWorkspacePackages: true
 
