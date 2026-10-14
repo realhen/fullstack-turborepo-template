@@ -2,7 +2,7 @@ import 'server-only'
 
 import { ApiClientError, unwrap, type ApiGetResponse } from '@repo/api-client'
 import { createServerApiClient } from '@repo/api-client/server'
-import { cookies } from 'next/headers'
+import { currentApiAuthorization } from '@/auth/session'
 import type {
   AuditEvent,
   BillingPlan,
@@ -18,10 +18,8 @@ type ProjectMembersResponse =
 const client = createServerApiClient()
 
 async function authorizationHeaders(): Promise<HeadersInit> {
-  const cookieName = process.env.AUTH_ACCESS_TOKEN_COOKIE ?? 'saas_access_token'
-  const token =
-    process.env.API_AUTH_TOKEN ?? (await cookies()).get(cookieName)?.value
-  return token ? { authorization: `Bearer ${token}` } : {}
+  const authorization = await currentApiAuthorization()
+  return authorization ? { authorization } : {}
 }
 
 function message(error: unknown): string {

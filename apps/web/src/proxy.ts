@@ -1,0 +1,52 @@
+import { NextResponse, type NextRequest } from 'next/server'
+import { getWebAuthConfig } from './auth/config'
+import { authenticateWebSession, sessionCookieUpdate } from './auth/session'
+import { authCookieOptions, deleteAuthCookieOptions } from './auth/cookies'
+export const config = { matcher: ['/app/:path*'] }
+export function requiresAuthentication(pathname: string) {
+  return pathname === '/app' || pathname.startsWith('/app/')
+}
+export function temporaryAuthenticationResponse() {
+  return new NextResponse('Authentication is temporarily unavailable.', {
+    status: 503,
+    headers: { 'cache-control': 'no-store', 'retry-after': '5' },
+  })
+}
+export async function proxy(request: NextRequest) {
+  if (!requiresAuthentication(request.nextUrl.pathname))
+    return NextResponse.next()
+  const auth = getWebAuthConfig()
+  if (auth.mode === 'local') return NextResponse.next()
+  const production = process.env.NODE_ENV === 'production'
+  const result = await authenticateWebSession({
+    config: auth,
+    ...(request.cookies.get(auth.sessionCookieName)?.value
+      ? { sealedSession: request.cookies.get(auth.sessionCookieName)!.value }
+      : {}),
+  })
+  if (result.authenticated) {
+    const response = NextResponse.next()
+    const cookieUpdate = sessionCookieUpdate(result)
+    if (cookieUpdate)
+      response.cookies.set(
+        auth.sessionCookieName,
+        cookieUpdate,
+        authCookieOptions('session', production),
+      )
+    return response
+  }
+  if (result.retryable) return temporaryAuthenticationResponse()
+  const destination = new URL('/sign-in', request.url)
+  destination.searchParams.set(
+    'returnTo',
+    `${request.nextUrl.pathname}${request.nextUrl.search}`,
+  )
+  const response = NextResponse.redirect(destination)
+  if (sessionCookieUpdate(result) === null)
+    response.cookies.set(
+      auth.sessionCookieName,
+      '',
+      deleteAuthCookieOptions(production),
+    )
+  return response
+}

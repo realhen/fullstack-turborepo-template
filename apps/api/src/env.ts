@@ -63,6 +63,20 @@ const envSchema = z
     WORKER_SECRET: z.string().min(16).optional(),
   })
   .superRefine((value, context) => {
+    const oidcConfigured = [
+      value.AUTH_ISSUER,
+      value.AUTH_JWKS_URI,
+      value.AUTH_AUDIENCE,
+      value.AUTH_CLIENT_ID,
+    ].some(Boolean)
+    if (value.AUTH_MODE !== 'oidc' && oidcConfigured) {
+      context.addIssue({
+        code: 'custom',
+        message: 'OIDC variables require AUTH_MODE=oidc.',
+        path: ['AUTH_MODE'],
+      })
+    }
+
     if (value.NODE_ENV === 'production' && value.AUTH_MODE === 'local') {
       context.addIssue({
         code: 'custom',
@@ -140,6 +154,17 @@ const envSchema = z
             'AUTH_AUDIENCE or AUTH_CLIENT_ID is required when AUTH_MODE=oidc.',
           path: ['AUTH_AUDIENCE'],
         })
+      }
+      if (value.NODE_ENV === 'production') {
+        for (const key of ['AUTH_ISSUER', 'AUTH_JWKS_URI'] as const) {
+          if (value[key] && new URL(value[key]).protocol !== 'https:') {
+            context.addIssue({
+              code: 'custom',
+              message: `${key} must use HTTPS in production.`,
+              path: [key],
+            })
+          }
+        }
       }
     }
   })
